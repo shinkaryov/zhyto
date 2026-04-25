@@ -1,0 +1,8 @@
+User Question:
+$question
+
+User Context:
+$user_context
+
+Compressed Evidence Pack:
+$compressed_evidence_pack

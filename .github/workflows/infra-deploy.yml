@@ -1,0 +1,82 @@
+name: Infra Deploy (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Terraform action to run
+        required: true
+        type: choice
+        default: plan
+        options:
+          - plan
+          - apply
+
+env:
+  TF_VERSION: '1.8.5'
+  TF_VAR_environment: prod
+  TF_VAR_azure_location: polandcentral
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment:
+      name: azure-prod
+    defaults:
+      run:
+        working-directory: ./infrastructure
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        run: |
+          terraform init -input=false \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TFSTATE_KEY }}"
+
+      - name: Terraform Validate
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -no-color -out=tfplan
+        env:
+          TF_VAR_azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          TF_VAR_azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          TF_VAR_container_registry_name: ${{ secrets.ACR_NAME }}
+          TF_VAR_web_app_name: ${{ secrets.BACKEND_WEB_APP_NAME }}
+          TF_VAR_cosmos_db_account_name: ${{ secrets.COSMOS_DB_ACCOUNT_NAME }}
+          TF_VAR_keyvault_name: ${{ secrets.KEYVAULT_NAME }}
+          TF_VAR_storage_account_name: ${{ secrets.STORAGE_ACCOUNT_NAME }}
+          TF_VAR_openai_account_name: ${{ secrets.OPENAI_ACCOUNT_NAME }}
+          TF_VAR_openai_custom_subdomain_name: ${{ secrets.OPENAI_CUSTOM_SUBDOMAIN_NAME }}
+          TF_VAR_auth_token_secret: ${{ secrets.AUTH_TOKEN_SECRET }}
+
+      - name: Terraform Apply
+        if: ${{ inputs.action == 'apply' }}
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Upload Terraform Plan Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: ./infrastructure/tfplan

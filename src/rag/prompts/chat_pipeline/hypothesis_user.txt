@@ -1,0 +1,10 @@
+User Question:
+$question
+
+User Context:
+$user_context
+
+$route_hint
+
+Output JSON schema:
+{"hypotheses":[{"hypothesis_id":"H1","short_title":"...","description":"...","evidence_query":"..."}]}

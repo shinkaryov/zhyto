@@ -1,0 +1,11 @@
+User Question:
+$question
+
+User Context:
+$user_context
+
+Analyst Output:
+$analyst_artifact
+
+Compressed Evidence Pack:
+$compressed_evidence_pack

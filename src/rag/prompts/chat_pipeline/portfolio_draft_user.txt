@@ -1,0 +1,15 @@
+User request:
+{question}
+
+User context:
+{user_context}
+
+Produce either:
+1) A short clarification question (if required fields are missing), OR
+2) A tool call to `draft_portfolio_transaction` (if fields are sufficient).
+
+Important:
+- If price wording is ambiguous (total vs per-unit), ask for clarification first and do not call tool yet.
+- `purchase_price` in tool arguments must be strictly per-unit price.
+- If user provided total amount, compute per-unit price before tool call.
+- If data is clear and sufficient, prioritize immediate tool call over any long explanation.

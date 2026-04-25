@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Backend FastAPI service
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: ukraine-invest-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - APP_DEBUG=true
+      - LOG_LEVEL=INFO
+      - USE_MOCK_COSMOS=true
+      - USE_MOCK_OPENAI=true
+      - LOCAL_COSMOS_MOCK_FILE=/app/local_cosmos_db.json/mock_cosmos_db.json
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - ./src:/app/src
+      - ./chroma_data:/app/chroma_data
+      - ./local_cosmos_db.json:/app/local_cosmos_db.json
+    working_dir: /app
+    command: uvicorn src.app.fastapi_main:app --host 0.0.0.0 --port 8000 --workers 1
+    networks:
+      - invest-network
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # Frontend React service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ukraine-invest-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://backend:8000
+    networks:
+      - invest-network
+    depends_on:
+      - backend
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  invest-network:
+    driver: bridge

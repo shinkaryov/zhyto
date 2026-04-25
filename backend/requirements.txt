@@ -1,0 +1,20 @@
+# Core FastAPI dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-multipart==0.0.6
+
+# Database & ChromaDB
+chromadb==1.5.8
+azure-cosmos==4.15.0
+
+# LLM & RAG
+langchain-openai==0.1.25
+langchain-text-splitters==0.2.4
+
+# Environment & Config
+python-dotenv==1.2.2
+
+# Market data (MVP)
+yfinance>=0.2.0,<1.0.0

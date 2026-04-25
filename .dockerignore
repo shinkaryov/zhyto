@@ -1,0 +1,40 @@
+# Docker image build context ignore file
+__pycache__
+*.pyc
+*.pyo
+.env
+.env.local
+.env*
+.venv
+venv
+env
+.git
+.gitignore
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+.pytest_cache
+.mypy_cache
+htmlcov
+coverage.xml
+*.log
+tests/
+.pre-commit-config.yaml
+.github/
+infrastructure/
+docs/
+
+# Large local artifacts not needed in backend image context
+chroma_data/
+frontend/
+local_cosmos_db.json/
+src/invest_app_data/
+*.sqlite3
+*.pickle
+*.bin
+
+# Python build/runtime caches
+**/__pycache__/

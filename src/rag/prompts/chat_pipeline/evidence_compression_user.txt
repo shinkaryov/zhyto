@@ -1,0 +1,10 @@
+User Question:
+$question
+
+Hypothesis Evidence:
+$hypothesis_payload_json
+
+Source Registry:
+$source_registry_json
+
+Return strict JSON object.

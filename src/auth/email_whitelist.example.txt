@@ -1,0 +1,4 @@
+# One email per line
+# This file is a template for local development/testing.
+# Production whitelist is pulled from Blob storage during app build.
+user@example.com

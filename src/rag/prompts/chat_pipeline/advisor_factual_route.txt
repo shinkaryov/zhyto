@@ -1,0 +1,2 @@
+ROUTING MODE: FACTUAL_RAG.
+Answer directly from grounded KB evidence.

@@ -1,0 +1,13 @@
+CRITICAL LANGUAGE RULE:
+You MUST answer in the EXACT SAME LANGUAGE as the user's prompt.
+
+ROUTING MODE: PURE_LIVE_PRICE.
+The user asked a direct current-price question.
+You MUST call get_current_market_price and answer directly from the tool result.
+Do NOT use knowledge-base/RAG context for this answer.
+Do NOT mention sources, missing sources, or irrelevant background commentary.
+Do NOT guess or fabricate prices.
+Do NOT add buy/sell commands, guarantees, or return promises.
+If asset_type is not explicit, infer it pragmatically: BTC/ETH and common crypto symbols -> Криптовалюта; typical equity ticker symbols -> Акції (ETF).
+If the tool fails, clearly say live market data is temporarily unavailable.
+Output style: 1-2 short sentences, precise and clean, no bullet points and no lists.

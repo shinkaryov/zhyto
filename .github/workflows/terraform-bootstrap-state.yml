@@ -1,0 +1,115 @@
+name: Bootstrap Terraform State
+
+on:
+  workflow_dispatch:
+    inputs:
+      location:
+        description: Azure region for Terraform state resources
+        required: true
+        default: polandcentral
+      resource_group_name:
+        description: Resource group to hold Terraform state storage
+        required: true
+        default: rg-terraform-state-prod
+      storage_account_name:
+        description: Globally unique storage account name (3-24 lowercase letters/numbers)
+        required: true
+      container_name:
+        description: Blob container name for Terraform state
+        required: true
+        default: tfstate
+      state_key:
+        description: Terraform state key (blob path) to use in deploy workflow
+        required: true
+        default: prod.terraform.tfstate
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    environment:
+      name: azure-prod
+
+    steps:
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Validate workflow inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          STORAGE_ACCOUNT_NAME="${{ inputs.storage_account_name }}"
+          CONTAINER_NAME="${{ inputs.container_name }}"
+
+          if [[ ! "$STORAGE_ACCOUNT_NAME" =~ ^[a-z0-9]{3,24}$ ]]; then
+            echo "Storage account name must match ^[a-z0-9]{3,24}$"
+            exit 1
+          fi
+
+          if [[ ! "$CONTAINER_NAME" =~ ^[a-z0-9-]{3,63}$ ]]; then
+            echo "Container name must match ^[a-z0-9-]{3,63}$"
+            exit 1
+          fi
+
+      - name: Create state resource group + storage account + container
+        id: bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RESOURCE_GROUP_NAME="${{ inputs.resource_group_name }}"
+          LOCATION="${{ inputs.location }}"
+          STORAGE_ACCOUNT_NAME="${{ inputs.storage_account_name }}"
+          CONTAINER_NAME="${{ inputs.container_name }}"
+          STATE_KEY="${{ inputs.state_key }}"
+
+          az group create \
+            --name "$RESOURCE_GROUP_NAME" \
+            --location "$LOCATION" \
+            --tags ManagedBy=GitHubActions Purpose=TerraformState >/dev/null
+
+          az storage account create \
+            --name "$STORAGE_ACCOUNT_NAME" \
+            --resource-group "$RESOURCE_GROUP_NAME" \
+            --location "$LOCATION" \
+            --sku Standard_LRS \
+            --kind StorageV2 \
+            --https-only true \
+            --allow-blob-public-access false \
+            --min-tls-version TLS1_2 >/dev/null
+
+          ACCOUNT_KEY=$(az storage account keys list \
+            --resource-group "$RESOURCE_GROUP_NAME" \
+            --account-name "$STORAGE_ACCOUNT_NAME" \
+            --query '[0].value' \
+            --output tsv)
+
+          az storage container create \
+            --name "$CONTAINER_NAME" \
+            --account-name "$STORAGE_ACCOUNT_NAME" \
+            --account-key "$ACCOUNT_KEY" \
+            --auth-mode key >/dev/null
+
+          {
+            echo "resource_group_name=$RESOURCE_GROUP_NAME"
+            echo "storage_account_name=$STORAGE_ACCOUNT_NAME"
+            echo "container_name=$CONTAINER_NAME"
+            echo "state_key=$STATE_KEY"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Write GitHub summary
+        run: |
+          {
+            echo "## Terraform state bootstrap complete"
+            echo
+            echo "Use these repository secrets for terraform deploy workflow:"
+            echo "- \`TFSTATE_RESOURCE_GROUP\`: \`${{ steps.bootstrap.outputs.resource_group_name }}\`"
+            echo "- \`TFSTATE_STORAGE_ACCOUNT\`: \`${{ steps.bootstrap.outputs.storage_account_name }}\`"
+            echo "- \`TFSTATE_CONTAINER\`: \`${{ steps.bootstrap.outputs.container_name }}\`"
+            echo "- \`TFSTATE_KEY\`: \`${{ steps.bootstrap.outputs.state_key }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

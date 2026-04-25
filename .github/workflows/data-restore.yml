@@ -1,0 +1,114 @@
+name: Data Restore (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      chroma_snapshot_blob:
+        description: Blob name in chroma-snapshots container (e.g. chroma-prod-v1.tar.gz)
+        required: true
+      reset_chroma_share:
+        description: Delete and recreate the Chroma file share before restore
+        required: true
+        type: boolean
+        default: false
+      upload_raw_data:
+        description: Upload src/invest_app_data JSON files into raw-data container
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment:
+      name: azure-prod
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Optionally reset Chroma Azure Files share
+        if: ${{ inputs.reset_chroma_share }}
+        run: |
+          set -euo pipefail
+          az storage share-rm delete \
+            --storage-account "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ secrets.CHROMA_SHARE_NAME }}" \
+            --yes || true
+
+          az storage share-rm create \
+            --storage-account "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ secrets.CHROMA_SHARE_NAME }}" \
+            --quota 100
+
+      - name: Download Chroma snapshot blob
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/chroma-restore
+          SNAPSHOT_PATH="/tmp/chroma-restore/snapshot"
+
+          az storage blob download \
+            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --auth-mode login \
+            --container-name "chroma-snapshots" \
+            --name "${{ inputs.chroma_snapshot_blob }}" \
+            --file "$SNAPSHOT_PATH"
+
+      - name: Extract snapshot
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/chroma-restore/extracted
+
+          FILE="/tmp/chroma-restore/snapshot"
+          if file "$FILE" | grep -qi 'gzip compressed'; then
+            tar -xzf "$FILE" -C /tmp/chroma-restore/extracted
+          elif file "$FILE" | grep -qi 'Zip archive'; then
+            unzip -q "$FILE" -d /tmp/chroma-restore/extracted
+          else
+            echo "Snapshot must be .tar.gz or .zip"
+            exit 1
+          fi
+
+      - name: Upload extracted snapshot into Chroma file share
+        run: |
+          set -euo pipefail
+
+          ROOT="/tmp/chroma-restore/extracted"
+          # If archive contains top-level chroma_data directory, upload its contents only.
+          SOURCE_DIR="$ROOT"
+          if [ -d "$ROOT/chroma_data" ]; then
+            SOURCE_DIR="$ROOT/chroma_data"
+          fi
+
+          az storage file upload-batch \
+            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --auth-mode login \
+            --source "$SOURCE_DIR" \
+            --destination "${{ secrets.CHROMA_SHARE_NAME }}" \
+            --overwrite
+
+      - name: Optional upload of raw JSON artifacts
+        if: ${{ inputs.upload_raw_data }}
+        run: |
+          set -euo pipefail
+          az storage blob upload-batch \
+            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --auth-mode login \
+            --destination "raw-data" \
+            --source "src/invest_app_data" \
+            --overwrite
+
+      - name: Restart backend to pick restored Chroma files
+        run: |
+          az webapp restart \
+            --name "${{ secrets.BACKEND_WEB_APP_NAME }}" \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}"

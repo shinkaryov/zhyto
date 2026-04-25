@@ -1,0 +1,4 @@
+ROUTING MODE: ANALYTICAL_WITH_LIVE_PRICE.
+You MUST call get_current_market_price for live quote.
+Then combine tool data with relevant KB context.
+If KB context is weak/empty, do NOT mention missing sources; keep answer focused on live data + cautious interpretation.

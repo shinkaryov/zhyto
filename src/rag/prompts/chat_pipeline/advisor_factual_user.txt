@@ -1,0 +1,11 @@
+User Question:
+$question
+
+User Context:
+$user_context
+
+Analyst Report:
+$analyst_artifact
+
+Synthesized Evidence:
+$evidence_pack

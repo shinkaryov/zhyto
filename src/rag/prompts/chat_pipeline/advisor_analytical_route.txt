@@ -1,0 +1,2 @@
+ROUTING MODE: ANALYTICAL_RAG.
+Use compressed KB evidence + analyst report to provide a reasoned and cautious conclusion.
