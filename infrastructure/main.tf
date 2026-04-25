@@ -159,12 +159,16 @@ resource "azurerm_key_vault_secret" "openai_api_key" {
   name         = "azure-openai-api-key"
   value        = module.openai.primary_access_key
   key_vault_id = module.keyvault.keyvault_id
+
+  depends_on = [module.keyvault]
 }
 
 resource "azurerm_key_vault_secret" "cosmos_connection_string" {
   name         = "cosmos-db-connection-string"
   value        = module.cosmos_db.connection_string
   key_vault_id = module.keyvault.keyvault_id
+
+  depends_on = [module.keyvault]
 }
 
 # ============================================================
@@ -232,6 +236,7 @@ module "web_app" {
     module.cosmos_db,
     module.storage,
     module.openai,
+    module.keyvault,
     azurerm_key_vault_secret.openai_api_key,
     azurerm_key_vault_secret.cosmos_connection_string,
   ]
