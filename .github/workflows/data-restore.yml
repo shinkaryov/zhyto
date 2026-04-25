@@ -99,8 +99,7 @@ jobs:
             --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
             --auth-mode login \
             --source "$SOURCE_DIR" \
-            --destination "${{ env.CHROMA_SHARE_NAME }}" \
-            --overwrite
+            --destination "${{ env.CHROMA_SHARE_NAME }}"
 
       - name: Optional upload of raw JSON artifacts
         if: ${{ inputs.upload_raw_data }}
