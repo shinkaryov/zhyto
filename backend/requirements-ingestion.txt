@@ -1,0 +1,3 @@
+# Offline/manual ingestion-only dependencies
+# Install this only when running src/rag/data_ingestion.py
+langchain-text-splitters==0.2.4

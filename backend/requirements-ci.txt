@@ -1,0 +1,7 @@
+# Lean dependency set for unit tests and static checks in CI.
+# Runtime image dependencies remain in backend/requirements.txt.
+fastapi==0.104.1
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-dotenv==1.2.2
+langchain-openai==0.1.25

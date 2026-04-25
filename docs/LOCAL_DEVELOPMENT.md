@@ -43,3 +43,8 @@ Local mode can reuse the same local `chroma_data` directory. Re-embedding is opt
 ## Optional Manual Ingestion (Local Only)
 
 [`src/rag/data_ingestion.py`](/Users/admin/PycharmProjects/PythonProject18 копія/src/rag/data_ingestion.py) remains an offline tool. Do not run it as part of app startup/deploy scripts.
+When you need it, install ingestion-only deps:
+
+```bash
+pip install -r backend/requirements-ingestion.txt
+```
