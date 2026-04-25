@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from src.rag.chat_pipeline import (
     ROUTING_INTENT_ANALYTICAL_RAG,
     ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE,

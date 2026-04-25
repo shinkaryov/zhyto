@@ -2,8 +2,6 @@
 Tests for RAG components.
 """
 
-import pytest
-
 from src.rag.embedder import Embedder
 from src.rag.generator import Generator
 from src.rag.retriever import Retriever
@@ -91,4 +89,3 @@ class TestGenerator:
 
         assert isinstance(response, str)
         assert len(response) > 0
-

@@ -2,8 +2,6 @@
 Tests for database components.
 """
 
-import pytest
-
 from src.db.cosmos_client import CosmosDBClient
 from src.db.models import PortfolioAsset, UserNote, UserProfile
 

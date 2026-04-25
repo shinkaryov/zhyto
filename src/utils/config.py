@@ -3,7 +3,7 @@ Utility module for configuration management.
 """
 
 import os
-from typing import Any, Optional
+from typing import Optional
 
 from dotenv import load_dotenv
 from pydantic import Field
