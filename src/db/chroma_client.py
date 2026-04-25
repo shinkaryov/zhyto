@@ -29,7 +29,9 @@ class ChromaDBClient:
                 name=settings.chroma_collection_name,
                 metadata={"hnsw:space": "cosine"},
             )
-            logger.info(f"ChromaDB initialized with collection '{settings.chroma_collection_name}'")
+            logger.info(
+                f"ChromaDB initialized with collection '{settings.chroma_collection_name}'"
+            )
         except Exception as e:
             logger.error(f"Failed to initialize ChromaDB: {e}")
 
@@ -64,4 +66,3 @@ def get_chroma_client() -> ChromaDBClient:
     if _chroma_client is None:
         _chroma_client = ChromaDBClient()
     return _chroma_client
-

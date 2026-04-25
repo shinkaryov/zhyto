@@ -24,4 +24,3 @@ def mock_settings(monkeypatch):
     monkeypatch.setenv("USE_MOCK_AUTH", "true")
     monkeypatch.setenv("USE_MOCK_COSMOS", "true")
     monkeypatch.setenv("USE_MOCK_OPENAI", "true")
-

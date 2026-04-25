@@ -7,4 +7,3 @@ __all__ = [
     "cosmos_client",
     "keyvault_client",
 ]
-

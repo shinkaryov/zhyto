@@ -8,13 +8,16 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class Embedder:
     def __init__(self, use_mock: Optional[bool] = None):
         self.use_mock = use_mock if use_mock is not None else settings.use_mock_openai
         self.embeddings = None
         self._cache_ttl_seconds = max(int(settings.chat_embedding_cache_ttl_seconds), 0)
         self._cache_max_entries = max(int(settings.chat_embedding_cache_max_entries), 1)
-        self._embedding_cache: "OrderedDict[str, tuple[float, list[float]]]" = OrderedDict()
+        self._embedding_cache: "OrderedDict[str, tuple[float, list[float]]]" = (
+            OrderedDict()
+        )
         self._cache_lock = Lock()
 
         if self.use_mock:
@@ -25,7 +28,8 @@ class Embedder:
     def _initialize_azure(self):
         try:
             embedding_deployment = (
-                settings.azure_openai_embedding_deployment_name or "text-embedding-3-small"
+                settings.azure_openai_embedding_deployment_name
+                or "text-embedding-3-small"
             ).strip()
             self.embeddings = AzureOpenAIEmbeddings(
                 api_key=settings.azure_openai_api_key,
@@ -77,7 +81,7 @@ class Embedder:
             return [self._mock_embed(text) for text in texts]
 
     def _mock_embed(self, text: str) -> list[float]:
-        return [0.1] * 1536 # Проста заглушка на 1536 розмірностей
+        return [0.1] * 1536  # Проста заглушка на 1536 розмірностей
 
     def _get_cached_embedding(self, key: str) -> Optional[list[float]]:
         if self._cache_ttl_seconds <= 0:
@@ -105,7 +109,9 @@ class Embedder:
             while len(self._embedding_cache) > self._cache_max_entries:
                 self._embedding_cache.popitem(last=False)
 
+
 _embedder: Optional[Embedder] = None
+
 
 def get_embedder() -> Embedder:
     global _embedder

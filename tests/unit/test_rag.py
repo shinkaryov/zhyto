@@ -83,8 +83,7 @@ class TestGenerator:
         generator = Generator(use_mock=True)
         system_prompt = "You are a financial advisor"
         response = generator.generate(
-            "Help me with portfolio",
-            system_prompt=system_prompt
+            "Help me with portfolio", system_prompt=system_prompt
         )
 
         assert isinstance(response, str)

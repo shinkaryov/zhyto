@@ -62,7 +62,9 @@ class _BadRequestLikeError(Exception):
         }
 
 
-def _make_generator_with_stub(queued_responses: list[Any]) -> tuple[Generator, _StubAzureClient]:
+def _make_generator_with_stub(
+    queued_responses: list[Any],
+) -> tuple[Generator, _StubAzureClient]:
     generator = Generator(use_mock=True)
     generator.use_mock = False
     generator.default_deployment = "gpt-5.4-mini"
@@ -132,7 +134,9 @@ def test_normalize_responses_content_reads_nested_text_value():
         output=[
             _ResponseLikeObject(
                 type="message",
-                content=[{"type": "output_text", "text": {"value": "Аналітичний висновок."}}],
+                content=[
+                    {"type": "output_text", "text": {"value": "Аналітичний висновок."}}
+                ],
             )
         ],
     )
@@ -146,7 +150,9 @@ def test_normalize_responses_content_ignores_reasoning_when_message_exists():
             _ResponseLikeObject(type="reasoning", summary=[{"text": "internal"}]),
             _ResponseLikeObject(
                 type="message",
-                content=[{"type": "output_text", "text": {"value": "User-facing answer"}}],
+                content=[
+                    {"type": "output_text", "text": {"value": "User-facing answer"}}
+                ],
             ),
         ],
     )
@@ -175,7 +181,9 @@ def test_normalize_responses_content_ignores_tool_call_output():
     assert Generator._normalize_responses_content(response) == ""
 
 
-def test_generate_with_responses_retries_on_reasoning_only_and_returns_message(monkeypatch):
+def test_generate_with_responses_retries_on_reasoning_only_and_returns_message(
+    monkeypatch,
+):
     monkeypatch.setattr(settings, "chat_llm_retry_enabled", False)
 
     generator, client = _make_generator_with_stub(
@@ -199,7 +207,10 @@ def test_generate_with_responses_retries_on_reasoning_only_and_returns_message(m
     assert len(client.responses.calls) == 2
     retry_input = client.responses.calls[1]["input"]
     assert isinstance(retry_input, list)
-    assert "You must produce a final answer message for the user." in retry_input[-1]["content"]
+    assert (
+        "You must produce a final answer message for the user."
+        in retry_input[-1]["content"]
+    )
 
 
 def test_reasoning_only_response_can_succeed_on_third_attempt(monkeypatch):
@@ -299,7 +310,10 @@ def test_empty_output_fallback_happens_only_advanced_to_default(monkeypatch):
         chat_intent="analytical_rag",
     )
     assert result == "mini-after-empty-fallback"
-    assert [call["model"] for call in client.responses.calls] == ["gpt-5.4-pro", "gpt-5.4-mini"]
+    assert [call["model"] for call in client.responses.calls] == [
+        "gpt-5.4-pro",
+        "gpt-5.4-mini",
+    ]
 
     generator2, client2 = _make_generator_with_stub([_empty_non_reasoning_response()])
     try:
@@ -342,7 +356,9 @@ def test_generate_with_responses_logs_shape_on_empty_normalization(monkeypatch, 
         assert "Empty final answer" in str(exc)
 
     combined_logs = "\n".join(record.getMessage() for record in caplog.records)
-    assert "Responses API returned empty normalized output after retries" in combined_logs
+    assert (
+        "Responses API returned empty normalized output after retries" in combined_logs
+    )
     assert "response_shape=" in combined_logs
 
 
@@ -463,7 +479,10 @@ def test_bad_request_on_advanced_triggers_one_fallback_to_mini(monkeypatch, capl
     )
 
     assert result == "fallback-mini-after-bad-request"
-    assert [call["model"] for call in client.responses.calls] == ["gpt-5.4-pro", "gpt-5.4-mini"]
+    assert [call["model"] for call in client.responses.calls] == [
+        "gpt-5.4-pro",
+        "gpt-5.4-mini",
+    ]
     combined_logs = "\n".join(record.getMessage() for record in caplog.records)
     assert "advanced_bad_request_payload_fallback" in combined_logs
     assert "removed_payload_keys" in combined_logs
@@ -516,7 +535,9 @@ def test_bad_request_fallback_payload_is_sanitized_again(monkeypatch):
 
     def tracking_sanitize(*, payload, deployment, model_tier):
         sanitize_calls.append((deployment, model_tier))
-        return original_sanitize(payload=payload, deployment=deployment, model_tier=model_tier)
+        return original_sanitize(
+            payload=payload, deployment=deployment, model_tier=model_tier
+        )
 
     monkeypatch.setattr(generator, "_sanitize_responses_payload", tracking_sanitize)
 
@@ -537,10 +558,14 @@ def test_bad_request_fallback_payload_is_sanitized_again(monkeypatch):
 def test_fallback_from_pro_to_mini_uses_responses_create(monkeypatch):
     monkeypatch.setattr(settings, "chat_llm_retry_enabled", False)
 
-    generator, client = _make_generator_with_stub([_message_response("fallback-mini-ok")])
+    generator, client = _make_generator_with_stub(
+        [_message_response("fallback-mini-ok")]
+    )
     attempted_deployments: list[str] = []
 
-    def fake_invoke_with_retry(call, *, deployment, operation, timeout_seconds=None, **kwargs):  # noqa: ARG001
+    def fake_invoke_with_retry(
+        call, *, deployment, operation, timeout_seconds=None, **kwargs
+    ):  # noqa: ARG001
         attempted_deployments.append(deployment)
         if deployment == "gpt-5.4-pro":
             raise LLMServiceUnavailableError(
@@ -585,7 +610,9 @@ def test_adaptive_timeout_prefers_live_price_when_intent_provided(monkeypatch):
     assert timeout_seconds == 15.0
 
 
-def test_adaptive_timeout_falls_back_to_deployment_based_when_intent_missing(monkeypatch):
+def test_adaptive_timeout_falls_back_to_deployment_based_when_intent_missing(
+    monkeypatch,
+):
     generator = Generator(use_mock=True)
     generator.advanced_deployment = "gpt-5.4-pro"
     monkeypatch.setattr(settings, "chat_llm_call_timeout_enabled", True)

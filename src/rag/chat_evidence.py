@@ -51,7 +51,9 @@ class EvidenceSynthesizer:
         self.max_clusters = max(1, max_clusters)
         self.max_sources = max(1, max_sources)
 
-    def deduplicate_candidates(self, candidates: list[ScoredChunk]) -> list[ScoredChunk]:
+    def deduplicate_candidates(
+        self, candidates: list[ScoredChunk]
+    ) -> list[ScoredChunk]:
         unique: list[ScoredChunk] = []
         signatures: list[str] = []
 
@@ -66,7 +68,9 @@ class EvidenceSynthesizer:
 
             for idx, prev in enumerate(unique):
                 prev_snippet = signatures[idx]
-                same_source = source_id and source_id == str(prev.metadata.get("source_id") or "")
+                same_source = source_id and source_id == str(
+                    prev.metadata.get("source_id") or ""
+                )
                 ratio = SequenceMatcher(None, snippet, prev_snippet).ratio()
                 if ratio >= 0.93 or (same_source and ratio >= 0.84):
                     skip_candidate = True
@@ -81,7 +85,9 @@ class EvidenceSynthesizer:
         return unique
 
     @staticmethod
-    def _group_candidates(candidates: list[ScoredChunk]) -> dict[str, list[ScoredChunk]]:
+    def _group_candidates(
+        candidates: list[ScoredChunk],
+    ) -> dict[str, list[ScoredChunk]]:
         groups: dict[str, list[ScoredChunk]] = {}
 
         for candidate in candidates:
@@ -96,7 +102,9 @@ class EvidenceSynthesizer:
             elif url:
                 key = f"url:{url}"
             else:
-                topic_signature = normalize_text(extract_headline(candidate.content))[:80]
+                topic_signature = normalize_text(extract_headline(candidate.content))[
+                    :80
+                ]
                 key = f"topic:{domain}:{channel}:{topic_signature}"
 
             groups.setdefault(key, []).append(candidate)
@@ -107,14 +115,19 @@ class EvidenceSynthesizer:
     def _build_cluster_summary(group: list[ScoredChunk]) -> str:
         selected_fragments: list[str] = []
 
-        for candidate in sorted(group, key=lambda item: item.rerank_score, reverse=True):
+        for candidate in sorted(
+            group, key=lambda item: item.rerank_score, reverse=True
+        ):
             for sentence in split_sentences(candidate.content):
                 clean_sentence = sentence.strip()
                 if len(clean_sentence) < 35:
                     continue
 
                 if any(
-                    SequenceMatcher(None, normalize_text(clean_sentence), normalize_text(existing)).ratio() > 0.85
+                    SequenceMatcher(
+                        None, normalize_text(clean_sentence), normalize_text(existing)
+                    ).ratio()
+                    > 0.85
                     for existing in selected_fragments
                 ):
                     continue
@@ -134,7 +147,9 @@ class EvidenceSynthesizer:
 
     @staticmethod
     def _cluster_confidence(group: list[ScoredChunk], source_count: int) -> str:
-        avg_trust = sum(safe_float(item.metadata.get("trust_weight"), 0.5) for item in group) / max(1, len(group))
+        avg_trust = sum(
+            safe_float(item.metadata.get("trust_weight"), 0.5) for item in group
+        ) / max(1, len(group))
         has_date = any(parse_datetime(item.metadata.get("date")) for item in group)
 
         if avg_trust >= 0.9 and source_count >= 2 and has_date:
@@ -145,7 +160,9 @@ class EvidenceSynthesizer:
             return "medium-low (single-source evidence)"
         return "low (limited or weakly corroborated evidence)"
 
-    def _build_source_registry(self, candidates: list[ScoredChunk]) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    def _build_source_registry(
+        self, candidates: list[ScoredChunk]
+    ) -> tuple[list[dict[str, Any]], dict[str, int]]:
         sources: list[dict[str, Any]] = []
         source_index: dict[str, int] = {}
 

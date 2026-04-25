@@ -100,9 +100,7 @@ class DataLoader:
             valid_docs.append(doc)
 
         if invalid_count > 0:
-            logger.warning(
-                f"{invalid_count} invalid documents skipped from {filename}"
-            )
+            logger.warning(f"{invalid_count} invalid documents skipped from {filename}")
 
         return valid_docs
 
@@ -171,8 +169,7 @@ class TextChunker:
 
         if max_chunks and len(chunks) > max_chunks:
             logger.warning(
-                f"Text produced {len(chunks)} chunks, "
-                f"truncating to {max_chunks}"
+                f"Text produced {len(chunks)} chunks, " f"truncating to {max_chunks}"
             )
             chunks = chunks[:max_chunks]
 
@@ -198,7 +195,8 @@ class EmbeddingGenerator:
 
         try:
             embedding_deployment = (
-                settings.azure_openai_embedding_deployment_name or "text-embedding-3-small"
+                settings.azure_openai_embedding_deployment_name
+                or "text-embedding-3-small"
             ).strip()
             self.embeddings = AzureOpenAIEmbeddings(
                 api_key=settings.azure_openai_api_key,

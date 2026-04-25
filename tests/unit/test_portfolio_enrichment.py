@@ -16,7 +16,9 @@ class StubMarketDataService:
         self.returned_prices = returned_prices
         self.historical_rates = historical_rates or {}
 
-    def get_current_price(self, asset_type: str, ticker: str | None, purchase_price: float | None):
+    def get_current_price(
+        self, asset_type: str, ticker: str | None, purchase_price: float | None
+    ):
         return self.returned_prices.get((asset_type, ticker), purchase_price)
 
     @staticmethod
@@ -56,7 +58,9 @@ def test_enrich_stock_asset_computes_current_value_and_pnl(monkeypatch):
         }
     ]
 
-    enriched, totals, usd_uah_rate, eur_uah_rate = portfolio._enrich_portfolio_assets(assets)
+    enriched, totals, usd_uah_rate, eur_uah_rate = portfolio._enrich_portfolio_assets(
+        assets
+    )
     item = enriched[0]
 
     assert item["current_price"] == 125.0

@@ -36,7 +36,13 @@ _pending_transaction_draft_ctx: ContextVar[Optional[dict[str, Any]]] = ContextVa
 )
 
 try:
-    from openai import APIConnectionError, APITimeoutError, BadRequestError, InternalServerError, RateLimitError
+    from openai import (
+        APIConnectionError,
+        APITimeoutError,
+        BadRequestError,
+        InternalServerError,
+        RateLimitError,
+    )
 
     _RETRYABLE_OPENAI_EXCEPTIONS = (
         APIConnectionError,
@@ -45,7 +51,9 @@ try:
         RateLimitError,
     )
     _BAD_REQUEST_OPENAI_EXCEPTIONS = (BadRequestError,)
-except Exception:  # pragma: no cover - openai package structure may differ across environments.
+except (
+    Exception
+):  # pragma: no cover - openai package structure may differ across environments.
     _RETRYABLE_OPENAI_EXCEPTIONS = tuple()
     _BAD_REQUEST_OPENAI_EXCEPTIONS = tuple()
 
@@ -59,7 +67,9 @@ class GeneratorError(Exception):
 class LLMServiceUnavailableError(GeneratorError):
     """Raised when transient LLM errors persist after retry attempts."""
 
-    def __init__(self, *, attempts: int, deployment: str, operation: str, last_error: Exception):
+    def __init__(
+        self, *, attempts: int, deployment: str, operation: str, last_error: Exception
+    ):
         self.attempts = attempts
         self.deployment = deployment
         self.operation = operation
@@ -94,8 +104,7 @@ class LLMBadRequestPayloadError(GeneratorError):
         super().__init__(
             "LLM bad request on deployment='"
             f"{deployment}' operation='{operation}': "
-            f"{error_message}"
-            + (f" (param={error_param})" if error_param else "")
+            f"{error_message}" + (f" (param={error_param})" if error_param else "")
         )
 
 
@@ -136,7 +145,11 @@ def _normalize_tool_categories(
             for category in tool_categories
             if str(category).strip()
         }
-        return {category for category in normalized if category in _SUPPORTED_TOOL_CATEGORIES}
+        return {
+            category
+            for category in normalized
+            if category in _SUPPORTED_TOOL_CATEGORIES
+        }
 
     # Backward compatibility: legacy boolean enabled all chat tools.
     if enable_market_price_tool:
@@ -161,10 +174,14 @@ class Generator:
             or settings.azure_openai_deployment_name
             or "gpt-5.4-mini"
         ).strip()
-        self.advanced_deployment: str = (settings.azure_openai_advanced_deployment or "").strip()
+        self.advanced_deployment: str = (
+            settings.azure_openai_advanced_deployment or ""
+        ).strip()
         self.advanced_api_preference: str = (
-            settings.azure_openai_advanced_api_preference or "responses"
-        ).strip().lower()
+            (settings.azure_openai_advanced_api_preference or "responses")
+            .strip()
+            .lower()
+        )
 
         if self.use_mock:
             logger.info("Using mock generator for development")
@@ -345,7 +362,11 @@ class Generator:
                 system_prompt=system_prompt,
                 history=history,
                 deployment=target_deployment,
-                tools=_tool_definitions_for_categories(resolved_tool_categories) if resolved_tool_categories else None,
+                tools=(
+                    _tool_definitions_for_categories(resolved_tool_categories)
+                    if resolved_tool_categories
+                    else None
+                ),
                 max_tokens=max_tokens,
                 temperature=temperature,
                 chat_intent=chat_intent,
@@ -374,9 +395,13 @@ class Generator:
                     deployment=self.default_deployment,
                     chat_intent=chat_intent,
                 )
-            raise GeneratorError(f"Azure OpenAI call failed: {exc.error_message}") from exc
+            raise GeneratorError(
+                f"Azure OpenAI call failed: {exc.error_message}"
+            ) from exc
         except LLMServiceUnavailableError as exc:
-            if self._should_fallback_to_default_on_runtime_error(exc, target_deployment):
+            if self._should_fallback_to_default_on_runtime_error(
+                exc, target_deployment
+            ):
                 logger.warning(
                     "LLM fallback triggered: reason=runtime_unavailable from_deployment=%s to_deployment=%s "
                     "error_class=%s error_message=%s",
@@ -401,7 +426,9 @@ class Generator:
             raise
         except Exception as e:
             wrapped = GeneratorError(str(e))
-            if self._should_fallback_to_default_on_runtime_error(wrapped, target_deployment):
+            if self._should_fallback_to_default_on_runtime_error(
+                wrapped, target_deployment
+            ):
                 logger.warning(
                     "LLM fallback triggered: reason=runtime_unavailable from_deployment=%s to_deployment=%s "
                     "error_class=%s error_message=%s",
@@ -491,7 +518,9 @@ class Generator:
             history=history,
         )
         responses_tools = self._to_responses_tools(tools or [])
-        operation_prefix = "responses_tool_completion" if responses_tools else "responses_completion"
+        operation_prefix = (
+            "responses_tool_completion" if responses_tools else "responses_completion"
+        )
 
         response = self._call_responses_api(
             deployment=deployment,
@@ -516,7 +545,11 @@ class Generator:
             for call in function_calls:
                 arguments_raw = call.get("arguments", "{}")
                 try:
-                    arguments = json.loads(arguments_raw) if isinstance(arguments_raw, str) else {}
+                    arguments = (
+                        json.loads(arguments_raw)
+                        if isinstance(arguments_raw, str)
+                        else {}
+                    )
                 except json.JSONDecodeError:
                     arguments = {}
 
@@ -551,7 +584,9 @@ class Generator:
             rounds += 1
 
         if responses_tools and self._extract_responses_function_calls(response):
-            raise GeneratorError("Exceeded maximum responses tool rounds without final answer")
+            raise GeneratorError(
+                "Exceeded maximum responses tool rounds without final answer"
+            )
 
         normalized_content = self._normalize_responses_content(response)
         output_types = self._extract_responses_output_types(response)
@@ -578,7 +613,10 @@ class Generator:
                 retry_input = [{"role": "user", "content": retry_instruction}]
                 retry_previous_response_id = str(self._node_get(current_response, "id"))
             else:
-                retry_input = [*input_items, {"role": "user", "content": retry_instruction}]
+                retry_input = [
+                    *input_items,
+                    {"role": "user", "content": retry_instruction},
+                ]
                 retry_previous_response_id = None
 
             logger.warning(
@@ -604,7 +642,9 @@ class Generator:
                 is_reasoning_retry=True,
             )
             normalized_retry = self._normalize_responses_content(current_response)
-            current_output_types = self._extract_responses_output_types(current_response)
+            current_output_types = self._extract_responses_output_types(
+                current_response
+            )
             logger.info(
                 "LLM normalization retry: deployment=%s operation=%s output_types=%s normalized_len=%d",
                 deployment,
@@ -652,7 +692,9 @@ class Generator:
                 allow_empty_output_fallback=False,
             )
 
-        raise GeneratorError("Empty final answer from Azure OpenAI Responses API after reasoning-only retries")
+        raise GeneratorError(
+            "Empty final answer from Azure OpenAI Responses API after reasoning-only retries"
+        )
 
     @staticmethod
     def _bump_retry_tokens(max_tokens: Optional[int]) -> Optional[int]:
@@ -671,7 +713,9 @@ class Generator:
             return 2
         return 0
 
-    def _should_fallback_on_empty_output(self, *, deployment: str, allow_fallback: bool) -> bool:
+    def _should_fallback_on_empty_output(
+        self, *, deployment: str, allow_fallback: bool
+    ) -> bool:
         if not allow_fallback:
             return False
         default = (self.default_deployment or "").strip()
@@ -696,11 +740,17 @@ class Generator:
         tier = (model_tier or "").strip().lower()
         if tier == "advanced":
             return ModelCapabilities(
-                supports_temperature=bool(settings.chat_model_advanced_supports_temperature),
+                supports_temperature=bool(
+                    settings.chat_model_advanced_supports_temperature
+                ),
                 supports_top_p=bool(settings.chat_model_advanced_supports_top_p),
-                supports_penalties=bool(settings.chat_model_advanced_supports_penalties),
+                supports_penalties=bool(
+                    settings.chat_model_advanced_supports_penalties
+                ),
                 supports_tools=bool(settings.chat_model_advanced_supports_tools),
-                supports_reasoning=bool(settings.chat_model_advanced_supports_reasoning),
+                supports_reasoning=bool(
+                    settings.chat_model_advanced_supports_reasoning
+                ),
             )
 
         return ModelCapabilities(
@@ -776,7 +826,11 @@ class Generator:
             )
         )
         client = self._get_azure_client()
-        runtime_client = client.with_options(timeout=effective_timeout) if effective_timeout else client
+        runtime_client = (
+            client.with_options(timeout=effective_timeout)
+            if effective_timeout
+            else client
+        )
         model_tier = self._resolve_model_tier(deployment)
 
         payload: dict[str, Any] = {
@@ -838,7 +892,9 @@ class Generator:
         )
         return response
 
-    def _should_fallback_to_default_on_runtime_error(self, exc: Exception, target_deployment: str) -> bool:
+    def _should_fallback_to_default_on_runtime_error(
+        self, exc: Exception, target_deployment: str
+    ) -> bool:
         default = (self.default_deployment or "").strip()
         target = (target_deployment or "").strip()
         if not default or not target or target == default:
@@ -853,7 +909,9 @@ class Generator:
 
         return self._is_retryable_llm_exception(exc)
 
-    def _should_fallback_to_default_on_bad_request(self, target_deployment: str) -> bool:
+    def _should_fallback_to_default_on_bad_request(
+        self, target_deployment: str
+    ) -> bool:
         default = (self.default_deployment or "").strip()
         target = (target_deployment or "").strip()
         if not default or not target or target == default:
@@ -908,7 +966,9 @@ class Generator:
                         "type": "function",
                         "name": function_block.get("name"),
                         "description": function_block.get("description"),
-                        "parameters": function_block.get("parameters", {"type": "object", "properties": {}}),
+                        "parameters": function_block.get(
+                            "parameters", {"type": "object", "properties": {}}
+                        ),
                     }
                 )
                 continue
@@ -924,7 +984,9 @@ class Generator:
         text_parts.extend(cls._collect_node_text(output_text, allow_refusal=False))
 
         if not text_parts:
-            text_parts.extend(cls._extract_message_text_parts(response, allow_refusal=False))
+            text_parts.extend(
+                cls._extract_message_text_parts(response, allow_refusal=False)
+            )
 
         if not text_parts:
             choices = cls._node_get(response, "choices")
@@ -932,13 +994,17 @@ class Generator:
                 for choice in choices:
                     message = cls._node_get(choice, "message")
                     text_parts.extend(
-                        cls._collect_node_text(cls._node_get(message, "content"), allow_refusal=False)
+                        cls._collect_node_text(
+                            cls._node_get(message, "content"), allow_refusal=False
+                        )
                     )
 
         if not text_parts:
             text_parts.extend(cls._collect_node_text(output_text, allow_refusal=True))
             if not text_parts:
-                text_parts.extend(cls._extract_message_text_parts(response, allow_refusal=True))
+                text_parts.extend(
+                    cls._extract_message_text_parts(response, allow_refusal=True)
+                )
 
         if not text_parts:
             return ""
@@ -956,7 +1022,9 @@ class Generator:
         return "\n".join(deduped).strip()
 
     @classmethod
-    def _extract_message_text_parts(cls, response: Any, *, allow_refusal: bool) -> list[str]:
+    def _extract_message_text_parts(
+        cls, response: Any, *, allow_refusal: bool
+    ) -> list[str]:
         output = cls._node_get(response, "output")
         if not isinstance(output, (list, tuple)):
             return []
@@ -964,22 +1032,44 @@ class Generator:
         parts: list[str] = []
         for item in output:
             item_type = cls._node_type(item)
-            if item_type in {"reasoning", "function_call", "function_call_output", "tool_call", "tool_result"}:
+            if item_type in {
+                "reasoning",
+                "function_call",
+                "function_call_output",
+                "tool_call",
+                "tool_result",
+            }:
                 continue
             if item_type == "refusal" and not allow_refusal:
                 continue
 
-            parts.extend(cls._collect_node_text(cls._node_get(item, "content"), allow_refusal=allow_refusal))
-            parts.extend(cls._collect_node_text(cls._node_get(item, "text"), allow_refusal=allow_refusal))
-            parts.extend(cls._collect_node_text(cls._node_get(item, "value"), allow_refusal=allow_refusal))
+            parts.extend(
+                cls._collect_node_text(
+                    cls._node_get(item, "content"), allow_refusal=allow_refusal
+                )
+            )
+            parts.extend(
+                cls._collect_node_text(
+                    cls._node_get(item, "text"), allow_refusal=allow_refusal
+                )
+            )
+            parts.extend(
+                cls._collect_node_text(
+                    cls._node_get(item, "value"), allow_refusal=allow_refusal
+                )
+            )
             if allow_refusal:
                 parts.extend(
-                    cls._collect_node_text(cls._node_get(item, "refusal"), allow_refusal=True)
+                    cls._collect_node_text(
+                        cls._node_get(item, "refusal"), allow_refusal=True
+                    )
                 )
         return parts
 
     @classmethod
-    def _collect_node_text(cls, node: Any, *, allow_refusal: bool, _depth: int = 0) -> list[str]:
+    def _collect_node_text(
+        cls, node: Any, *, allow_refusal: bool, _depth: int = 0
+    ) -> list[str]:
         if node is None or _depth > 8:
             return []
 
@@ -993,12 +1083,22 @@ class Generator:
         if isinstance(node, (list, tuple)):
             parts: list[str] = []
             for item in node:
-                parts.extend(cls._collect_node_text(item, allow_refusal=allow_refusal, _depth=_depth + 1))
+                parts.extend(
+                    cls._collect_node_text(
+                        item, allow_refusal=allow_refusal, _depth=_depth + 1
+                    )
+                )
             return parts
 
         if isinstance(node, dict):
             node_type = str(node.get("type", "")).lower().strip()
-            if node_type in {"reasoning", "function_call", "function_call_output", "tool_call", "tool_result"}:
+            if node_type in {
+                "reasoning",
+                "function_call",
+                "function_call_output",
+                "tool_call",
+                "tool_result",
+            }:
                 return []
             if node_type == "refusal" and not allow_refusal:
                 return []
@@ -1007,16 +1107,28 @@ class Generator:
             for key in ("output_text", "text", "value", "content", "message"):
                 if key in node:
                     parts.extend(
-                        cls._collect_node_text(node.get(key), allow_refusal=allow_refusal, _depth=_depth + 1)
+                        cls._collect_node_text(
+                            node.get(key),
+                            allow_refusal=allow_refusal,
+                            _depth=_depth + 1,
+                        )
                     )
             if allow_refusal and "refusal" in node:
                 parts.extend(
-                    cls._collect_node_text(node.get("refusal"), allow_refusal=True, _depth=_depth + 1)
+                    cls._collect_node_text(
+                        node.get("refusal"), allow_refusal=True, _depth=_depth + 1
+                    )
                 )
             return parts
 
         node_type = cls._node_type(node)
-        if node_type in {"reasoning", "function_call", "function_call_output", "tool_call", "tool_result"}:
+        if node_type in {
+            "reasoning",
+            "function_call",
+            "function_call_output",
+            "tool_call",
+            "tool_result",
+        }:
             return []
         if node_type == "refusal" and not allow_refusal:
             return []
@@ -1124,7 +1236,17 @@ class Generator:
             for key, value in list(node.items())[:25]:
                 key_str = str(key)
                 low = key_str.lower()
-                if any(blocked in low for blocked in ("prompt", "message", "input", "api_key", "authorization", "token")):
+                if any(
+                    blocked in low
+                    for blocked in (
+                        "prompt",
+                        "message",
+                        "input",
+                        "api_key",
+                        "authorization",
+                        "token",
+                    )
+                ):
                     sanitized[key_str] = "<redacted>"
                     continue
                 sanitized[key_str] = cls._to_sanitized_shape(value, _depth=_depth + 1)
@@ -1140,11 +1262,23 @@ class Generator:
                     pass
 
         attrs: dict[str, Any] = {}
-        for attr in ("id", "type", "role", "status", "output_text", "output", "content", "text", "value"):
+        for attr in (
+            "id",
+            "type",
+            "role",
+            "status",
+            "output_text",
+            "output",
+            "content",
+            "text",
+            "value",
+        ):
             if not hasattr(node, attr):
                 continue
             try:
-                attrs[attr] = cls._to_sanitized_shape(getattr(node, attr), _depth=_depth + 1)
+                attrs[attr] = cls._to_sanitized_shape(
+                    getattr(node, attr), _depth=_depth + 1
+                )
             except Exception:
                 continue
         if attrs:
@@ -1178,7 +1312,15 @@ class Generator:
         if isinstance(node, dict):
             return sorted(str(key) for key in node.keys())[:25]
         keys: list[str] = []
-        for key in ("id", "model", "output", "output_text", "choices", "status", "type"):
+        for key in (
+            "id",
+            "model",
+            "output",
+            "output_text",
+            "choices",
+            "status",
+            "type",
+        ):
             if hasattr(node, key):
                 keys.append(key)
         return keys
@@ -1217,7 +1359,9 @@ class Generator:
                     is_reasoning_retry,
                 )
                 return call()
-            except Exception as exc:  # pragma: no cover - retry branch is validated in unit tests.
+            except (
+                Exception
+            ) as exc:  # pragma: no cover - retry branch is validated in unit tests.
                 last_error = exc
                 bad_request_details = self._extract_bad_request_details(exc)
                 if bad_request_details is not None:
@@ -1302,16 +1446,28 @@ class Generator:
         advanced_timeout = max(float(settings.chat_llm_timeout_advanced_seconds), 0.0)
         tool_extra = max(float(settings.chat_llm_timeout_tool_extra_seconds), 0.0)
 
-        timeout_seconds = advanced_timeout if (advanced and target == advanced) else default_timeout
+        timeout_seconds = (
+            advanced_timeout if (advanced and target == advanced) else default_timeout
+        )
 
         normalized_intent = (chat_intent or "").strip().lower()
         if normalized_intent:
             if normalized_intent == "pure_live_price":
-                timeout_seconds = max(float(settings.chat_llm_timeout_live_price_seconds), 0.0)
-            elif normalized_intent in {"factual_rag", "portfolio_draft", "portfolio_transaction"}:
-                timeout_seconds = max(float(settings.chat_llm_timeout_factual_seconds), 0.0)
+                timeout_seconds = max(
+                    float(settings.chat_llm_timeout_live_price_seconds), 0.0
+                )
+            elif normalized_intent in {
+                "factual_rag",
+                "portfolio_draft",
+                "portfolio_transaction",
+            }:
+                timeout_seconds = max(
+                    float(settings.chat_llm_timeout_factual_seconds), 0.0
+                )
             elif normalized_intent in {"analytical_rag", "analytical_with_live_price"}:
-                timeout_seconds = max(float(settings.chat_llm_timeout_analytical_seconds), 0.0)
+                timeout_seconds = max(
+                    float(settings.chat_llm_timeout_analytical_seconds), 0.0
+                )
             # Unknown intent: keep deployment-based timeout selection.
         # If chat intent is unavailable at call site, deployment-based timeout remains active.
 
@@ -1327,7 +1483,8 @@ class Generator:
         status_code = getattr(exc, "status_code", None)
         is_bad_request_status = isinstance(status_code, int) and status_code == 400
         is_bad_request_type = bool(
-            _BAD_REQUEST_OPENAI_EXCEPTIONS and isinstance(exc, _BAD_REQUEST_OPENAI_EXCEPTIONS)
+            _BAD_REQUEST_OPENAI_EXCEPTIONS
+            and isinstance(exc, _BAD_REQUEST_OPENAI_EXCEPTIONS)
         )
         if not is_bad_request_status and not is_bad_request_type:
             return None
@@ -1363,11 +1520,22 @@ class Generator:
         if isinstance(exc, LLMServiceUnavailableError):
             return True
 
-        if _RETRYABLE_OPENAI_EXCEPTIONS and isinstance(exc, _RETRYABLE_OPENAI_EXCEPTIONS):
+        if _RETRYABLE_OPENAI_EXCEPTIONS and isinstance(
+            exc, _RETRYABLE_OPENAI_EXCEPTIONS
+        ):
             return True
 
         status_code = getattr(exc, "status_code", None)
-        if isinstance(status_code, int) and status_code in {408, 409, 425, 429, 500, 502, 503, 504}:
+        if isinstance(status_code, int) and status_code in {
+            408,
+            409,
+            425,
+            429,
+            500,
+            502,
+            503,
+            504,
+        }:
             return True
 
         if isinstance(exc, GeneratorError):

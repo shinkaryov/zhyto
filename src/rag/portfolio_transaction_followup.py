@@ -55,7 +55,14 @@ def detect_price_interpretation_answer(user_reply: str) -> Optional[str]:
         return "total"
     if any(
         token in normalized
-        for token in ("per share", "per unit", "за акцію", "ціна за", "за 1", "за одиниц")
+        for token in (
+            "per share",
+            "per unit",
+            "за акцію",
+            "ціна за",
+            "за 1",
+            "за одиниц",
+        )
     ):
         return "per_unit"
     return None
@@ -69,7 +76,14 @@ def is_price_clarification_prompt(message: str) -> bool:
     has_total_side = any(token in normalized for token in ("загальн", "сума", "total"))
     has_unit_side = any(
         token in normalized
-        for token in ("за акцію", "ціна за", "per share", "per unit", "за одиниц", "за 1")
+        for token in (
+            "за акцію",
+            "ціна за",
+            "per share",
+            "per unit",
+            "за одиниц",
+            "за 1",
+        )
     )
     return has_total_side and has_unit_side
 
@@ -137,7 +151,9 @@ def build_confirmation_message(draft: dict, language: str = "uk") -> str:
     )
 
 
-def bootstrap_pending_transaction_from_user_message(user_message: str) -> Optional[dict]:
+def bootstrap_pending_transaction_from_user_message(
+    user_message: str,
+) -> Optional[dict]:
     text = user_message or ""
     normalized = normalize_text(text)
     if not normalized:
@@ -201,9 +217,15 @@ def _extract_currency(normalized: str) -> Optional[str]:
 
 
 def _extract_asset_type(normalized: str, ticker: Optional[str]) -> Optional[str]:
-    if any(token in normalized for token in ("крипт", "crypto", "bitcoin", "btc", "eth", "ethereum")):
+    if any(
+        token in normalized
+        for token in ("крипт", "crypto", "bitcoin", "btc", "eth", "ethereum")
+    ):
         return "Криптовалюта"
-    if any(token in normalized for token in ("акц", "stock", "shares", "etf")) or ticker:
+    if (
+        any(token in normalized for token in ("акц", "stock", "shares", "etf"))
+        or ticker
+    ):
         return "Акції (ETF)"
     return None
 

@@ -32,7 +32,9 @@ class DummyGenerator:
         self.calls = []
 
     def generate(self, prompt: str, system_prompt: str | None = None, **kwargs):
-        self.calls.append({"prompt": prompt, "system_prompt": system_prompt, "kwargs": kwargs})
+        self.calls.append(
+            {"prompt": prompt, "system_prompt": system_prompt, "kwargs": kwargs}
+        )
         normalized_system = (system_prompt or "").lower()
 
         if "senior financial research analyst" in normalized_system:
@@ -50,7 +52,9 @@ class DummyGenerator:
 
 class UnsafeAdvisorGenerator(DummyGenerator):
     def generate(self, prompt: str, system_prompt: str | None = None, **kwargs):
-        self.calls.append({"prompt": prompt, "system_prompt": system_prompt, "kwargs": kwargs})
+        self.calls.append(
+            {"prompt": prompt, "system_prompt": system_prompt, "kwargs": kwargs}
+        )
         normalized_system = (system_prompt or "").lower()
         if "senior financial research analyst" in normalized_system:
             return "Key Facts: OVDP market context [1]."
@@ -106,13 +110,17 @@ class TestModelRouter:
 class TestIntentDetector:
     def test_detects_domain_channel_and_analysis_intent(self):
         detector = QueryIntentDetector()
-        intent = detector.detect("What narrative is forming across Telegram and YouTube on OVDP risks now?")
+        intent = detector.detect(
+            "What narrative is forming across Telegram and YouTube on OVDP risks now?"
+        )
 
         assert intent.is_analytical is True
         assert intent.is_time_sensitive is True
         assert "telegram" in intent.matched_channels
         assert "youtube" in intent.matched_channels
-        assert any("bond" in domain or "ovdp" in domain for domain in intent.matched_domains)
+        assert any(
+            "bond" in domain or "ovdp" in domain for domain in intent.matched_domains
+        )
 
     def test_detects_chat_routing_modes(self):
         detector = QueryIntentDetector()
@@ -122,7 +130,10 @@ class TestIntentDetector:
         assert pure_live.requires_live_price_tool is True
 
         live_plus_analysis = detector.detect("Що сьогодні з AAPL і чому він падає?")
-        assert live_plus_analysis.routing_intent == ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE
+        assert (
+            live_plus_analysis.routing_intent
+            == ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE
+        )
         assert live_plus_analysis.requires_live_price_tool is True
 
         my_btc_live = detector.detect(
@@ -159,7 +170,9 @@ class TestIntentDetector:
         assert intent.routing_intent == ROUTING_INTENT_PORTFOLIO_TRANSACTION
         assert intent.requires_live_price_tool is False
 
-    def test_transaction_clarification_followup_total_alias_stays_in_transaction_intent(self):
+    def test_transaction_clarification_followup_total_alias_stays_in_transaction_intent(
+        self,
+    ):
         detector = QueryIntentDetector()
         history = [
             {"role": "user", "content": "Вчора купив 20 акцій TSLA за 4000 доларів"},
@@ -175,7 +188,10 @@ class TestIntentDetector:
     def test_transaction_analysis_question_routes_to_analytical(self):
         detector = QueryIntentDetector()
         intent = detector.detect("Що думаєш про мою покупку TSLA?")
-        assert intent.routing_intent in {ROUTING_INTENT_ANALYTICAL_RAG, ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE}
+        assert intent.routing_intent in {
+            ROUTING_INTENT_ANALYTICAL_RAG,
+            ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE,
+        }
 
 
 class TestDeterministicReranker:
@@ -191,7 +207,9 @@ class TestDeterministicReranker:
             now_provider=lambda: fixed_now,
         )
 
-        intent = QueryIntentDetector().detect("What changed in tax discussion recently?")
+        intent = QueryIntentDetector().detect(
+            "What changed in tax discussion recently?"
+        )
 
         results = [
             {
@@ -219,7 +237,10 @@ class TestDeterministicReranker:
         ranked = reranker.rerank(results, intent)
 
         assert ranked[0].content == "Recent trusted tax update"
-        assert ranked[0].score_breakdown["freshness"] > ranked[1].score_breakdown["freshness"]
+        assert (
+            ranked[0].score_breakdown["freshness"]
+            > ranked[1].score_breakdown["freshness"]
+        )
         assert ranked[0].score_breakdown["trust"] > ranked[1].score_breakdown["trust"]
 
 
@@ -230,21 +251,36 @@ class TestEvidenceSynthesizer:
         candidates = [
             ScoredChunk(
                 content="OVDP yields moved to 17% after the latest primary auction and demand stayed strong.",
-                metadata={"source_id": "doc-1", "channel": "SourceA", "url": "https://a", "date": "2026-04-22"},
+                metadata={
+                    "source_id": "doc-1",
+                    "channel": "SourceA",
+                    "url": "https://a",
+                    "date": "2026-04-22",
+                },
                 distance=0.1,
                 retrieval_score=0.8,
                 rerank_score=0.9,
             ),
             ScoredChunk(
                 content="OVDP yields moved to 17% after the latest primary auction and demand stayed strong.",
-                metadata={"source_id": "doc-1", "channel": "SourceA", "url": "https://a", "date": "2026-04-22"},
+                metadata={
+                    "source_id": "doc-1",
+                    "channel": "SourceA",
+                    "url": "https://a",
+                    "date": "2026-04-22",
+                },
                 distance=0.11,
                 retrieval_score=0.79,
                 rerank_score=0.88,
             ),
             ScoredChunk(
                 content="Analysts now flag refinancing risk for the 2027 maturity bucket as a key downside.",
-                metadata={"source_id": "doc-2", "channel": "SourceB", "url": "https://b", "date": "2026-04-21"},
+                metadata={
+                    "source_id": "doc-2",
+                    "channel": "SourceB",
+                    "url": "https://b",
+                    "date": "2026-04-21",
+                },
                 distance=0.2,
                 retrieval_score=0.7,
                 rerank_score=0.84,
@@ -270,8 +306,13 @@ class TestAnalyticalChatPipeline:
         assert result.sources == []
         assert retriever.calls == []
         assert len(generator.calls) == 1
-        assert "portfolio transaction drafting assistant" in (generator.calls[0]["system_prompt"] or "").lower()
-        assert generator.calls[0]["kwargs"].get("tool_categories") == ["portfolio_action_tools"]
+        assert (
+            "portfolio transaction drafting assistant"
+            in (generator.calls[0]["system_prompt"] or "").lower()
+        )
+        assert generator.calls[0]["kwargs"].get("tool_categories") == [
+            "portfolio_action_tools"
+        ]
 
     def test_transaction_clarification_followup_routes_back_to_draft_flow(self):
         retriever = DummyRetriever([])
@@ -297,8 +338,13 @@ class TestAnalyticalChatPipeline:
         assert result.sources == []
         assert retriever.calls == []
         assert len(generator.calls) == 1
-        assert "portfolio transaction drafting assistant" in (generator.calls[0]["system_prompt"] or "").lower()
-        assert generator.calls[0]["kwargs"].get("tool_categories") == ["portfolio_action_tools"]
+        assert (
+            "portfolio transaction drafting assistant"
+            in (generator.calls[0]["system_prompt"] or "").lower()
+        )
+        assert generator.calls[0]["kwargs"].get("tool_categories") == [
+            "portfolio_action_tools"
+        ]
 
     def test_scope_control_refuses_unrelated_requests(self):
         retriever = DummyRetriever([])
@@ -310,7 +356,9 @@ class TestAnalyticalChatPipeline:
 
         result = pipeline.run(question="Write me code for a Python scraper")
 
-        assert "інвестиці" in result.message.lower() or "invest" in result.message.lower()
+        assert (
+            "інвестиці" in result.message.lower() or "invest" in result.message.lower()
+        )
         assert result.sources == []
         assert retriever.calls == []
         assert generator.calls == []
@@ -353,7 +401,9 @@ class TestAnalyticalChatPipeline:
         assert retriever.calls == []
         assert len(generator.calls) == 1
         assert generator.calls[0]["kwargs"].get("enable_market_price_tool") is False
-        assert generator.calls[0]["kwargs"].get("tool_categories") == ["live_market_tools"]
+        assert generator.calls[0]["kwargs"].get("tool_categories") == [
+            "live_market_tools"
+        ]
         assert generator.calls[0]["kwargs"].get("deployment") == "mini-deploy"
 
     def test_returns_only_cited_sources(self):
@@ -435,15 +485,27 @@ class TestAnalyticalChatPipeline:
         advisor_call = generator.calls[-1]
         advisor_system_prompt = advisor_call["system_prompt"]
 
-        assert "You MUST answer in the EXACT SAME LANGUAGE the user used in their prompt." in advisor_system_prompt
+        assert (
+            "You MUST answer in the EXACT SAME LANGUAGE the user used in their prompt."
+            in advisor_system_prompt
+        )
         assert "ROUTING MODE: ANALYTICAL_RAG." in advisor_system_prompt
         assert "THE PERSONA:" in advisor_system_prompt
         assert "MELT THE STRUCTURE (CRITICAL):" in advisor_system_prompt
-        assert "NEVER use bullet points (-) or numbered lists (1., 2.)." in advisor_system_prompt
+        assert (
+            "NEVER use bullet points (-) or numbered lists (1., 2.)."
+            in advisor_system_prompt
+        )
         assert "Never offer further assistance." in advisor_system_prompt
-        assert "Format your response as 2 to 4 short, punchy paragraphs" in advisor_system_prompt
+        assert (
+            "Format your response as 2 to 4 short, punchy paragraphs"
+            in advisor_system_prompt
+        )
         assert "Do NOT cite live tool data as [n]." in advisor_system_prompt
-        assert "Use [n] citations only for KB-backed factual claims." in advisor_system_prompt
+        assert (
+            "Use [n] citations only for KB-backed factual claims."
+            in advisor_system_prompt
+        )
 
     def test_guardrail_patches_unsafe_all_in_advice(self):
         raw_results = [

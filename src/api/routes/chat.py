@@ -17,7 +17,11 @@ from src.services import get_market_data_service
 from src.services.portfolio_enrichment import enrich_portfolio_assets
 from src.rag.retriever import get_retriever
 from src.rag.generator import GeneratorError, LLMServiceUnavailableError, get_generator
-from src.rag.guardrails import build_scope_refusal, detect_scope_violation, validate_response_output
+from src.rag.guardrails import (
+    build_scope_refusal,
+    detect_scope_violation,
+    validate_response_output,
+)
 from src.rag.model_router import ChatModelRouter
 from src.rag.chat_pipeline import (
     AnalyticalChatPipeline,
@@ -33,7 +37,10 @@ from src.rag.portfolio_transaction_followup import (
     is_pending_draft_waiting_price_interpretation,
     is_price_clarification_prompt,
 )
-from src.api.routes.chat_prompt_builder import build_system_prompt, build_user_only_summary
+from src.api.routes.chat_prompt_builder import (
+    build_system_prompt,
+    build_user_only_summary,
+)
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -41,6 +48,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 class ChatMessage(BaseModel):
     """Chat message model."""
+
     role: str
     content: str
     sources: Optional[list] = None
@@ -50,6 +58,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     """Chat request model."""
+
     message: str
     user_id: Optional[str] = None
     history: Optional[list[ChatMessage]] = None
@@ -65,6 +74,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     """Chat response model."""
+
     message: str
     sources: list
     pending_transaction_draft: Optional[dict] = None
@@ -73,6 +83,7 @@ class ChatResponse(BaseModel):
 
 class ChatFinalizeRequest(BaseModel):
     """Finalize chat request."""
+
     user_id: Optional[str] = None
     history: list[ChatMessage] = Field(default_factory=list)
     language: Optional[str] = "uk"
@@ -80,6 +91,7 @@ class ChatFinalizeRequest(BaseModel):
 
 class ChatFinalizeResponse(BaseModel):
     """Finalize chat response."""
+
     summary: str
     note: dict
 
@@ -92,9 +104,7 @@ def _detect_message_language(text: str) -> str:
 def _build_llm_unavailable_message(language: str, retry_attempts: int) -> str:
     """Build user-facing fallback when LLM API is temporarily unavailable."""
     if language == "uk":
-        return (
-            "Зараз не можемо обробити ваш запит. Спробуйте пізніше."
-        )
+        return "Зараз не можемо обробити ваш запит. Спробуйте пізніше."
     return "We cannot process your request now. Try again later."
 
 
@@ -172,7 +182,11 @@ def _persist_pending_draft(db_client, *, user_id: str, draft: dict) -> dict:
     if not currency:
         raise ValueError("currency is required")
 
-    asset_types_with_ticker = {"Акції (ETF)", "Криптовалюта", "Фонди нерухомості (Inzhur, REITs)"}
+    asset_types_with_ticker = {
+        "Акції (ETF)",
+        "Криптовалюта",
+        "Фонди нерухомості (Inzhur, REITs)",
+    }
     optional_price_asset_types = {"Готівка", "Депозит"}
     if asset_type in asset_types_with_ticker and not ticker:
         raise ValueError("ticker is required for this asset type")
@@ -238,7 +252,11 @@ def _send_message_sync(
 
         retriever = get_retriever()
         generator = get_generator()
-        history = [msg.model_dump(exclude_none=True) for msg in request.history] if request.history else []
+        history = (
+            [msg.model_dump(exclude_none=True) for msg in request.history]
+            if request.history
+            else []
+        )
         pending_draft = _extract_latest_pending_transaction_draft(history)
 
         draft_action = _detect_transaction_confirmation_action(request.message)
@@ -250,20 +268,30 @@ def _send_message_sync(
                     draft=pending_draft,
                 )
             except Exception as exc:
-                logger.error("Failed to persist confirmed transaction draft: %s", exc, exc_info=True)
+                logger.error(
+                    "Failed to persist confirmed transaction draft: %s",
+                    exc,
+                    exc_info=True,
+                )
                 message = (
                     "Не вдалося додати актив з цієї чернетки. Перевірте дані та спробуйте ще раз."
                     if language == "uk"
                     else "Couldn't add this draft to portfolio. Please verify details and try again."
                 )
-                return ChatResponse(message=message, sources=[], pending_transaction_draft=None)
-            ticker_suffix = f" ({saved_asset.get('ticker')})" if saved_asset.get("ticker") else ""
+                return ChatResponse(
+                    message=message, sources=[], pending_transaction_draft=None
+                )
+            ticker_suffix = (
+                f" ({saved_asset.get('ticker')})" if saved_asset.get("ticker") else ""
+            )
             message = (
                 f"Готово. Актив{ticker_suffix} додано в портфель."
                 if language == "uk"
                 else f"Done. Asset{ticker_suffix} was added to your portfolio."
             )
-            return ChatResponse(message=message, sources=[], pending_transaction_draft=None)
+            return ChatResponse(
+                message=message, sources=[], pending_transaction_draft=None
+            )
 
         if pending_draft and draft_action == "cancel":
             message = (
@@ -271,11 +299,15 @@ def _send_message_sync(
                 if language == "uk"
                 else "Understood. The transaction draft has been cancelled."
             )
-            return ChatResponse(message=message, sources=[], pending_transaction_draft=None)
+            return ChatResponse(
+                message=message, sources=[], pending_transaction_draft=None
+            )
 
         # Multi-turn transaction memory: resolve short clarification answers (e.g. "тотал", "за акцію")
         # before normal intent detection to avoid accidental fallback into factual/analytical routes.
-        if pending_draft and is_pending_draft_waiting_price_interpretation(pending_draft):
+        if pending_draft and is_pending_draft_waiting_price_interpretation(
+            pending_draft
+        ):
             interpretation = detect_price_interpretation_answer(request.message)
             if interpretation:
                 completed_draft = complete_pending_draft_from_interpretation(
@@ -283,7 +315,9 @@ def _send_message_sync(
                     interpretation,
                 )
                 if completed_draft:
-                    confirmation = build_confirmation_message(completed_draft, language=language)
+                    confirmation = build_confirmation_message(
+                        completed_draft, language=language
+                    )
                     return ChatResponse(
                         message=confirmation,
                         sources=[],
@@ -316,7 +350,9 @@ def _send_message_sync(
                 and not isinstance(pending_from_result, dict)
                 and is_price_clarification_prompt(result.message)
             ):
-                pending_from_result = bootstrap_pending_transaction_from_user_message(request.message)
+                pending_from_result = bootstrap_pending_transaction_from_user_message(
+                    request.message
+                )
             return ChatResponse(
                 message=result.message,
                 sources=result.sources,
@@ -346,7 +382,10 @@ def _send_message_sync(
 
         # Search for relevant context only when route needs RAG.
         search_results = []
-        if routing_intent not in {ROUTING_INTENT_PURE_LIVE_PRICE, ROUTING_INTENT_PORTFOLIO_TRANSACTION}:
+        if routing_intent not in {
+            ROUTING_INTENT_PURE_LIVE_PRICE,
+            ROUTING_INTENT_PORTFOLIO_TRANSACTION,
+        }:
             search_results = retriever.search(request.message, top_k=5)
 
         # Build system prompt
@@ -394,7 +433,9 @@ def _send_message_sync(
             and pending_transaction_draft is None
             and is_price_clarification_prompt(response)
         ):
-            pending_transaction_draft = bootstrap_pending_transaction_from_user_message(request.message)
+            pending_transaction_draft = bootstrap_pending_transaction_from_user_message(
+                request.message
+            )
         validation = validate_response_output(
             message=response,
             routing_intent=routing_intent,
@@ -404,20 +445,30 @@ def _send_message_sync(
 
         # Extract sources cited in response
         used_sources = []
-        if search_results and routing_intent not in {ROUTING_INTENT_PURE_LIVE_PRICE, ROUTING_INTENT_PORTFOLIO_TRANSACTION} and not validation.clear_sources:
+        if (
+            search_results
+            and routing_intent
+            not in {
+                ROUTING_INTENT_PURE_LIVE_PRICE,
+                ROUTING_INTENT_PORTFOLIO_TRANSACTION,
+            }
+            and not validation.clear_sources
+        ):
 
-            cited_indices_str = re.findall(r'\[(\d+)]', response)
+            cited_indices_str = re.findall(r"\[(\d+)]", response)
             cited_indices = set(int(idx) for idx in cited_indices_str)
 
             for i, result in enumerate(search_results, 1):
                 if i in cited_indices:
                     metadata = result.get("metadata", {})
-                    used_sources.append({
-                        "index": i,
-                        "channel": metadata.get("channel", "Unknown"),
-                        "url": metadata.get("url", "N/A"),
-                        "date": metadata.get("date", "N/A"),
-                    })
+                    used_sources.append(
+                        {
+                            "index": i,
+                            "channel": metadata.get("channel", "Unknown"),
+                            "url": metadata.get("url", "N/A"),
+                            "date": metadata.get("date", "N/A"),
+                        }
+                    )
 
         debug_payload = None
         if request.debug:
@@ -444,7 +495,9 @@ def _send_message_sync(
                 "last_error": str(exc.last_error),
             }
         return ChatResponse(
-            message=_build_llm_unavailable_message(language, retry_attempts=exc.attempts),
+            message=_build_llm_unavailable_message(
+                language, retry_attempts=exc.attempts
+            ),
             sources=[],
             pending_transaction_draft=None,
             debug=debug_payload,
@@ -500,9 +553,11 @@ def _finalize_chat_sync(
     summary = build_user_only_summary(user_messages, lang)
 
     db_client = get_cosmos_client()
-    note = db_client.add_note({
-        "user_id": current_user.user_id,
-        "content": summary,
-    })
+    note = db_client.add_note(
+        {
+            "user_id": current_user.user_id,
+            "content": summary,
+        }
+    )
 
     return ChatFinalizeResponse(summary=summary, note=note)

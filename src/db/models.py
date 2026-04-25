@@ -22,6 +22,7 @@ class UserNote(BaseModel):
 
     class Config:
         """Pydantic config."""
+
         json_schema_extra = {
             "example": {
                 "user_id": "user_123",
@@ -40,13 +41,18 @@ class PortfolioAsset(BaseModel):
     amount: float = Field(gt=0, description="Amount of asset")
     currency: Currency = Field(description="Currency of asset")
     purchase_date: datetime = Field(description="Date of purchase")
-    purchase_price: Optional[float] = Field(default=None, description="Price per unit at purchase")
+    purchase_price: Optional[float] = Field(
+        default=None, description="Price per unit at purchase"
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    notes: Optional[str] = Field(default=None, description="Additional notes about the asset")
+    notes: Optional[str] = Field(
+        default=None, description="Additional notes about the asset"
+    )
 
     class Config:
         """Pydantic config."""
+
         json_schema_extra = {
             "example": {
                 "user_id": "user_123",
@@ -69,13 +75,15 @@ class UserProfile(BaseModel):
         default=RiskLevel.MODERATE, description="Investor risk profile"
     )
     investment_experience: str = Field(
-        default="beginner", description="Investment experience level (beginner, intermediate, advanced)"
+        default="beginner",
+        description="Investment experience level (beginner, intermediate, advanced)",
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
         """Pydantic config."""
+
         json_schema_extra = {
             "example": {
                 "id": "user_123",
@@ -94,11 +102,14 @@ class ChatMessage(BaseModel):
     user_id: str = Field(description="User ID")
     role: str = Field(description="Role of sender (user or assistant)")
     content: str = Field(description="Message content")
-    sources: list[str] = Field(default_factory=list, description="Links to source documents")
+    sources: list[str] = Field(
+        default_factory=list, description="Links to source documents"
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
         """Pydantic config."""
+
         json_schema_extra = {
             "example": {
                 "user_id": "user_123",
@@ -106,4 +117,3 @@ class ChatMessage(BaseModel):
                 "content": "Що зараз відбувається з податками на інвестиції?",
             }
         }
-

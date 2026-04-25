@@ -34,7 +34,9 @@ def _extract_yield_from_notes(notes: str) -> Optional[str]:
         return None
 
     normalized = notes.lower()
-    if "%" not in normalized and not any(token in normalized for token in ("yield", "дохід", "дохідн", "купон", "ставк")):
+    if "%" not in normalized and not any(
+        token in normalized for token in ("yield", "дохід", "дохідн", "купон", "ставк")
+    ):
         return None
 
     match = re.search(r"(\d+(?:[.,]\d+)?)\s*%", notes)
@@ -121,7 +123,9 @@ def build_enriched_portfolio_context(
         else:
             yield_label = "N/A"
 
-        current_value_global = _to_float(asset.get(f"current_value_{reporting_currency.lower()}"))
+        current_value_global = _to_float(
+            asset.get(f"current_value_{reporting_currency.lower()}")
+        )
         weight_percent: Optional[float] = None
         if total_global and total_global > 0 and current_value_global is not None:
             weight_percent = (current_value_global / total_global) * 100
@@ -129,12 +133,12 @@ def build_enriched_portfolio_context(
         lines.append(
             "- Asset: "
             f"{asset_type} ({ticker}), "
-                f"Quantity: {_format_number(amount)}, "
-                f"Current Value: {_format_currency(current_value_global, reporting_currency)} "
-                f"(Weight: {_format_number(weight_percent)}%). "
-                f"Yield: {yield_label}. "
-                f"Purchase Date: {purchase_date}, Maturity Date: {maturity_date}. "
-                f"Notes: {notes}"
+            f"Quantity: {_format_number(amount)}, "
+            f"Current Value: {_format_currency(current_value_global, reporting_currency)} "
+            f"(Weight: {_format_number(weight_percent)}%). "
+            f"Yield: {yield_label}. "
+            f"Purchase Date: {purchase_date}, Maturity Date: {maturity_date}. "
+            f"Notes: {notes}"
         )
 
     return "\n".join(lines)

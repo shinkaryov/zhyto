@@ -22,11 +22,7 @@ class TestCosmosDBClient:
     def test_create_user(self):
         """Test creating a user."""
         client = CosmosDBClient(use_mock=True)
-        user_data = {
-            "id": "user_123",
-            "email": "test@example.com",
-            "name": "Test User"
-        }
+        user_data = {"id": "user_123", "email": "test@example.com", "name": "Test User"}
         result = client.create_user(user_data)
         assert result["id"] == "user_123"
 
@@ -40,10 +36,7 @@ class TestCosmosDBClient:
     def test_add_note(self):
         """Test adding a note."""
         client = CosmosDBClient(use_mock=True)
-        note_data = {
-            "user_id": "user_123",
-            "content": "Test note"
-        }
+        note_data = {"user_id": "user_123", "content": "Test note"}
         result = client.add_note(note_data)
         assert result["user_id"] == "user_123"
 
@@ -56,15 +49,17 @@ class TestCosmosDBClient:
     def test_update_portfolio_manual_price(self):
         """Test setting and clearing manual current price for a portfolio asset."""
         client = CosmosDBClient(use_mock=True)
-        added = client.add_portfolio_asset({
-            "user_id": "user_test_manual_price",
-            "asset_type": "Акції (ETF)",
-            "amount": 2,
-            "currency": "USD",
-            "purchase_price": 100,
-            "purchase_date": "2026-01-01",
-            "ticker": "DUOL",
-        })
+        added = client.add_portfolio_asset(
+            {
+                "user_id": "user_test_manual_price",
+                "asset_type": "Акції (ETF)",
+                "amount": 2,
+                "currency": "USD",
+                "purchase_price": 100,
+                "purchase_date": "2026-01-01",
+                "ticker": "DUOL",
+            }
+        )
 
         updated = client.update_portfolio_manual_price(
             asset_id=added["id"],
@@ -89,9 +84,7 @@ class TestDatabaseModels:
     def test_user_note_model(self):
         """Test UserNote model."""
         note = UserNote(
-            user_id="user_123",
-            content="Test note",
-            tags=["finance", "planning"]
+            user_id="user_123", content="Test note", tags=["finance", "planning"]
         )
         assert note.user_id == "user_123"
         assert note.content == "Test note"
@@ -107,7 +100,7 @@ class TestDatabaseModels:
             asset_type=AssetType.BONDS,
             amount=5000.0,
             currency=Currency.UAH,
-            purchase_date=datetime.now()
+            purchase_date=datetime.now(),
         )
         assert asset.user_id == "user_123"
         assert asset.asset_type == AssetType.BONDS
@@ -122,7 +115,7 @@ class TestDatabaseModels:
             email="test@example.com",
             name="Test User",
             risk_level=RiskLevel.MODERATE,
-            investment_experience="intermediate"
+            investment_experience="intermediate",
         )
         assert profile.id == "user_123"
         assert profile.email == "test@example.com"

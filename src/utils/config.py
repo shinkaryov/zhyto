@@ -24,8 +24,12 @@ class Settings(BaseSettings):
     # Feature Flags
     # ============================================================
     feature_auth_enabled: bool = Field(default=False, env="FEATURE_AUTH_ENABLED")
-    feature_cosmos_db_enabled: bool = Field(default=False, env="FEATURE_COSMOS_DB_ENABLED")
-    feature_azure_openai_enabled: bool = Field(default=False, env="FEATURE_AZURE_OPENAI_ENABLED")
+    feature_cosmos_db_enabled: bool = Field(
+        default=False, env="FEATURE_COSMOS_DB_ENABLED"
+    )
+    feature_azure_openai_enabled: bool = Field(
+        default=False, env="FEATURE_AZURE_OPENAI_ENABLED"
+    )
     chat_analytical_pipeline_enabled: bool = Field(
         default=True, env="CHAT_ANALYTICAL_PIPELINE_ENABLED"
     )
@@ -44,16 +48,18 @@ class Settings(BaseSettings):
     chroma_collection_name: str = Field(
         default="ukraine_invest_market_context", env="CHROMA_COLLECTION_NAME"
     )
-    chat_retrieval_initial_top_k: int = Field(default=30, env="CHAT_RETRIEVAL_INITIAL_TOP_K")
+    chat_retrieval_initial_top_k: int = Field(
+        default=30, env="CHAT_RETRIEVAL_INITIAL_TOP_K"
+    )
     chat_rerank_top_k: int = Field(default=12, env="CHAT_RERANK_TOP_K")
-    chat_synthesis_max_clusters: int = Field(default=6, env="CHAT_SYNTHESIS_MAX_CLUSTERS")
+    chat_synthesis_max_clusters: int = Field(
+        default=6, env="CHAT_SYNTHESIS_MAX_CLUSTERS"
+    )
     chat_context_max_sources: int = Field(default=10, env="CHAT_CONTEXT_MAX_SOURCES")
     chat_rerank_similarity_weight: float = Field(
         default=0.55, env="CHAT_RERANK_SIMILARITY_WEIGHT"
     )
-    chat_rerank_trust_weight: float = Field(
-        default=0.2, env="CHAT_RERANK_TRUST_WEIGHT"
-    )
+    chat_rerank_trust_weight: float = Field(default=0.2, env="CHAT_RERANK_TRUST_WEIGHT")
     chat_rerank_freshness_weight: float = Field(
         default=0.15, env="CHAT_RERANK_FRESHNESS_WEIGHT"
     )
@@ -64,7 +70,9 @@ class Settings(BaseSettings):
         default=14, env="CHAT_FRESHNESS_HALF_LIFE_DAYS"
     )
     chat_llm_retry_enabled: bool = Field(default=True, env="CHAT_LLM_RETRY_ENABLED")
-    chat_llm_retry_max_attempts: int = Field(default=2, env="CHAT_LLM_RETRY_MAX_ATTEMPTS")
+    chat_llm_retry_max_attempts: int = Field(
+        default=2, env="CHAT_LLM_RETRY_MAX_ATTEMPTS"
+    )
     chat_llm_retry_initial_delay_seconds: float = Field(
         default=0.35,
         env="CHAT_LLM_RETRY_INITIAL_DELAY_SECONDS",
@@ -144,13 +152,19 @@ class Settings(BaseSettings):
     azure_tenant_id: Optional[str] = Field(default=None, env="AZURE_TENANT_ID")
     azure_client_id: Optional[str] = Field(default=None, env="AZURE_CLIENT_ID")
     azure_client_secret: Optional[str] = Field(default=None, env="AZURE_CLIENT_SECRET")
-    azure_subscription_id: Optional[str] = Field(default=None, env="AZURE_SUBSCRIPTION_ID")
+    azure_subscription_id: Optional[str] = Field(
+        default=None, env="AZURE_SUBSCRIPTION_ID"
+    )
 
     # ============================================================
     # Azure OpenAI Configuration
     # ============================================================
-    azure_openai_api_key: Optional[str] = Field(default=None, env="AZURE_OPENAI_API_KEY")
-    azure_openai_endpoint: Optional[str] = Field(default=None, env="AZURE_OPENAI_ENDPOINT")
+    azure_openai_api_key: Optional[str] = Field(
+        default=None, env="AZURE_OPENAI_API_KEY"
+    )
+    azure_openai_endpoint: Optional[str] = Field(
+        default=None, env="AZURE_OPENAI_ENDPOINT"
+    )
     azure_openai_deployment_name: str = Field(
         default="gpt-5.4-mini", env="AZURE_OPENAI_DEPLOYMENT_NAME"
     )
@@ -201,7 +215,9 @@ class Settings(BaseSettings):
         default="text-embedding-3-small", env="AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME"
     )
 
-    azure_openai_api_version: str = Field(default="2025-03-01-preview", env="AZURE_OPENAI_API_VERSION")
+    azure_openai_api_version: str = Field(
+        default="2025-03-01-preview", env="AZURE_OPENAI_API_VERSION"
+    )
 
     # ============================================================
     # Azure Cosmos DB Configuration
@@ -217,7 +233,9 @@ class Settings(BaseSettings):
     entra_authority_url: str = Field(
         default="https://login.microsoftonline.com/", env="ENTRA_AUTHORITY_URL"
     )
-    entra_redirect_uri: str = Field(default="http://localhost:3000", env="ENTRA_REDIRECT_URI")
+    entra_redirect_uri: str = Field(
+        default="http://localhost:3000", env="ENTRA_REDIRECT_URI"
+    )
 
     # ============================================================
     # Local Auth (Email + Password + Whitelist)

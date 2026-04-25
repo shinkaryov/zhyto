@@ -123,7 +123,9 @@ def execute_draft_portfolio_transaction(arguments: dict[str, Any]) -> dict[str, 
     if amount is None or amount <= 0:
         return _draft_failure("invalid_amount", "amount must be a positive number")
     if currency is None:
-        return _draft_failure("invalid_currency", "currency must be one of UAH, USD, EUR")
+        return _draft_failure(
+            "invalid_currency", "currency must be one of UAH, USD, EUR"
+        )
 
     if purchase_price is None and total_value is not None and amount > 0:
         purchase_price = total_value / amount
@@ -216,7 +218,10 @@ def _normalize_asset_type(value: Any) -> Optional[str]:
     lowered = raw.lower()
     if any(token in lowered for token in ("акц", "etf", "stock", "stocks", "equity")):
         return "Акції (ETF)"
-    if any(token in lowered for token in ("крипт", "crypto", "bitcoin", "btc", "eth", "ethereum")):
+    if any(
+        token in lowered
+        for token in ("крипт", "crypto", "bitcoin", "btc", "eth", "ethereum")
+    ):
         return "Криптовалюта"
     if any(token in lowered for token in ("депозит", "deposit")):
         return "Депозит"

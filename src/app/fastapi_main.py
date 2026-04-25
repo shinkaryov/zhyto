@@ -1,4 +1,5 @@
 """FastAPI backend for ЖИТО."""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI

@@ -17,4 +17,3 @@ async def health_check():
 async def readiness_check():
     """Readiness check endpoint."""
     return {"status": "ready"}
-

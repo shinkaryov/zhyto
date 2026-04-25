@@ -119,7 +119,10 @@ def _strip_pure_live_noise(text: str) -> str:
     kept: list[str] = []
     for sentence in sentences:
         normalized_sentence = sentence.lower()
-        if any(re.search(pattern, normalized_sentence, flags=re.IGNORECASE) for pattern in PURE_LIVE_NOISE_PATTERNS):
+        if any(
+            re.search(pattern, normalized_sentence, flags=re.IGNORECASE)
+            for pattern in PURE_LIVE_NOISE_PATTERNS
+        ):
             continue
         if re.match(r"^\s*(sources|джерела)\s*:\s*", sentence, flags=re.IGNORECASE):
             continue

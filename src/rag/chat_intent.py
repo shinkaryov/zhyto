@@ -81,7 +81,14 @@ class QueryIntentDetector:
             "domains": ["equit", "stocks", "market", "personal_finance"],
         },
         "real_estate": {
-            "keywords": ["reit", "real estate", "нерухом", "іпотек", "єоселя", "housing"],
+            "keywords": [
+                "reit",
+                "real estate",
+                "нерухом",
+                "іпотек",
+                "єоселя",
+                "housing",
+            ],
             "domains": ["real_estate", "property", "housing"],
         },
     }
@@ -300,14 +307,19 @@ class QueryIntentDetector:
     @classmethod
     def _is_transaction_statement(cls, query: str, normalized_query: str) -> bool:
         has_transaction_verb = any(
-            re.search(rf"\b{re.escape(verb)}\b", normalized_query) for verb in cls.TRANSACTION_VERB_HINTS
+            re.search(rf"\b{re.escape(verb)}\b", normalized_query)
+            for verb in cls.TRANSACTION_VERB_HINTS
         )
         if not has_transaction_verb:
             return False
 
         ticker_candidates = cls.LIVE_TICKER_PATTERN.findall(query or "")
-        has_ticker = any(token not in cls.NON_MARKET_TICKER_TOKENS for token in ticker_candidates)
-        has_asset_hint = any(keyword in normalized_query for keyword in cls.LIVE_ASSET_HINTS)
+        has_ticker = any(
+            token not in cls.NON_MARKET_TICKER_TOKENS for token in ticker_candidates
+        )
+        has_asset_hint = any(
+            keyword in normalized_query for keyword in cls.LIVE_ASSET_HINTS
+        )
         if not (has_ticker or has_asset_hint):
             return False
 
@@ -315,27 +327,51 @@ class QueryIntentDetector:
         number_count = len(numeric_tokens)
         has_price_marker = any(
             marker in normalized_query
-            for marker in (" за ", " for ", " по ", "usd", "uah", "eur", "бакс", "дол", "грн", "$", "€", "₴")
+            for marker in (
+                " за ",
+                " for ",
+                " по ",
+                "usd",
+                "uah",
+                "eur",
+                "бакс",
+                "дол",
+                "грн",
+                "$",
+                "€",
+                "₴",
+            )
         )
         return number_count >= 2 or (number_count >= 1 and has_price_marker)
 
     @classmethod
     def _is_portfolio_action_request(cls, query: str, normalized_query: str) -> bool:
         has_transaction_verb = any(
-            re.search(rf"\b{re.escape(verb)}\b", normalized_query) for verb in cls.TRANSACTION_VERB_HINTS
+            re.search(rf"\b{re.escape(verb)}\b", normalized_query)
+            for verb in cls.TRANSACTION_VERB_HINTS
         )
         if not has_transaction_verb:
             return False
 
         ticker_candidates = cls.LIVE_TICKER_PATTERN.findall(query or "")
-        has_ticker = any(token not in cls.NON_MARKET_TICKER_TOKENS for token in ticker_candidates)
-        has_asset_hint = any(keyword in normalized_query for keyword in cls.LIVE_ASSET_HINTS)
-        has_portfolio_hint = any(token in normalized_query for token in ("портфель", "portfolio", "в портфель"))
+        has_ticker = any(
+            token not in cls.NON_MARKET_TICKER_TOKENS for token in ticker_candidates
+        )
+        has_asset_hint = any(
+            keyword in normalized_query for keyword in cls.LIVE_ASSET_HINTS
+        )
+        has_portfolio_hint = any(
+            token in normalized_query
+            for token in ("портфель", "portfolio", "в портфель")
+        )
         return has_ticker or has_asset_hint or has_portfolio_hint
 
     @classmethod
     def _is_explicit_analysis_request(cls, normalized_query: str) -> bool:
-        return any(marker in normalized_query for marker in cls.EXPLICIT_ANALYSIS_ON_TRANSACTION_HINTS)
+        return any(
+            marker in normalized_query
+            for marker in cls.EXPLICIT_ANALYSIS_ON_TRANSACTION_HINTS
+        )
 
     @staticmethod
     def _last_assistant_message(history: Optional[list[dict[str, Any]]]) -> str:
@@ -458,30 +494,42 @@ class QueryIntentDetector:
         ):
             return ROUTING_INTENT_PORTFOLIO_TRANSACTION, False
 
-        if (
-            cls._is_portfolio_action_request(query, normalized_query)
-            and not cls._is_explicit_analysis_request(normalized_query)
-        ):
+        if cls._is_portfolio_action_request(
+            query, normalized_query
+        ) and not cls._is_explicit_analysis_request(normalized_query):
             return ROUTING_INTENT_PORTFOLIO_TRANSACTION, False
 
-        if cls._is_transaction_statement(query, normalized_query) and not cls._is_explicit_analysis_request(normalized_query):
+        if cls._is_transaction_statement(
+            query, normalized_query
+        ) and not cls._is_explicit_analysis_request(normalized_query):
             return ROUTING_INTENT_PORTFOLIO_TRANSACTION, False
 
-        has_live_keyword = any(keyword in normalized_query for keyword in cls.LIVE_PRICE_QUERY_HINTS)
+        has_live_keyword = any(
+            keyword in normalized_query for keyword in cls.LIVE_PRICE_QUERY_HINTS
+        )
         ticker_candidates = cls.LIVE_TICKER_PATTERN.findall(query or "")
-        has_ticker = any(token not in cls.NON_MARKET_TICKER_TOKENS for token in ticker_candidates)
-        has_asset_hint = any(keyword in normalized_query for keyword in cls.LIVE_ASSET_HINTS)
-        has_portfolio_reference = any(keyword in normalized_query for keyword in cls.PORTFOLIO_REFERENCE_HINTS)
-        has_portfolio_ticker = any(str(asset.get("ticker") or "").strip() for asset in portfolio_items)
+        has_ticker = any(
+            token not in cls.NON_MARKET_TICKER_TOKENS for token in ticker_candidates
+        )
+        has_asset_hint = any(
+            keyword in normalized_query for keyword in cls.LIVE_ASSET_HINTS
+        )
+        has_portfolio_reference = any(
+            keyword in normalized_query for keyword in cls.PORTFOLIO_REFERENCE_HINTS
+        )
+        has_portfolio_ticker = any(
+            str(asset.get("ticker") or "").strip() for asset in portfolio_items
+        )
 
-        has_asset_reference = has_ticker or has_asset_hint or (
-            has_portfolio_reference and has_portfolio_ticker
+        has_asset_reference = (
+            has_ticker
+            or has_asset_hint
+            or (has_portfolio_reference and has_portfolio_ticker)
         )
         requires_live_price = has_live_keyword and has_asset_reference
-        asks_for_analysis = (
-            any(keyword in normalized_query for keyword in cls.LIVE_ANALYSIS_HINTS)
-            or any(keyword in normalized_query for keyword in cls.ANALYTICAL_HINTS)
-        )
+        asks_for_analysis = any(
+            keyword in normalized_query for keyword in cls.LIVE_ANALYSIS_HINTS
+        ) or any(keyword in normalized_query for keyword in cls.ANALYTICAL_HINTS)
 
         if requires_live_price and asks_for_analysis:
             return ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE, True
@@ -510,7 +558,9 @@ class QueryIntentDetector:
                 matched_channels.append(channel)
 
         is_analytical = any(keyword in normalized for keyword in self.ANALYTICAL_HINTS)
-        is_time_sensitive = any(keyword in normalized for keyword in self.TIME_SENSITIVE_HINTS)
+        is_time_sensitive = any(
+            keyword in normalized for keyword in self.TIME_SENSITIVE_HINTS
+        )
         routing_intent, requires_live_price_tool = self._detect_chat_routing_intent(
             query=query,
             normalized_query=normalized,

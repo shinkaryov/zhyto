@@ -122,7 +122,9 @@ class DeterministicReranker:
             return 0.55
         return 0.0
 
-    def rerank(self, raw_results: list[dict[str, Any]], intent: QueryIntent) -> list[ScoredChunk]:
+    def rerank(
+        self, raw_results: list[dict[str, Any]], intent: QueryIntent
+    ) -> list[ScoredChunk]:
         reranked: list[ScoredChunk] = []
 
         for result in raw_results:

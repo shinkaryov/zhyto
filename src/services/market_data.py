@@ -20,8 +20,12 @@ logger = get_logger(__name__)
 COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3"
 COINGECKO_TIMEOUT_SECONDS = 8
 DEFAULT_CACHE_TTL_SECONDS = 20 * 60  # 20 minutes
-NBU_USD_UAH_URL = "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json"
-NBU_EUR_UAH_URL = "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=EUR&json"
+NBU_USD_UAH_URL = (
+    "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json"
+)
+NBU_EUR_UAH_URL = (
+    "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=EUR&json"
+)
 NBU_FX_URL_TEMPLATE = (
     "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?"
     "valcode={valcode}&date={yyyymmdd}&json"
@@ -82,7 +86,10 @@ class MarketDataService:
     def is_market_traded_asset(self, asset_type: str) -> bool:
         """Check if asset type should be resolved from an external market API."""
         normalized_asset_type = (asset_type or "").strip()
-        return normalized_asset_type in STOCK_ASSET_TYPES or normalized_asset_type in CRYPTO_ASSET_TYPES
+        return (
+            normalized_asset_type in STOCK_ASSET_TYPES
+            or normalized_asset_type in CRYPTO_ASSET_TYPES
+        )
 
     def get_stock_price(self, ticker: str) -> Optional[float]:
         """Return latest stock/ETF price from yfinance."""
@@ -113,7 +120,10 @@ class MarketDataService:
 
         coin_id = self._resolve_crypto_coin_id(normalized_symbol)
         if not coin_id:
-            logger.warning("CoinGecko coin id could not be resolved for symbol '%s'", normalized_symbol)
+            logger.warning(
+                "CoinGecko coin id could not be resolved for symbol '%s'",
+                normalized_symbol,
+            )
             return None
 
         price = self._fetch_crypto_price_by_id(coin_id)
@@ -139,13 +149,19 @@ class MarketDataService:
 
         if normalized_asset_type in STOCK_ASSET_TYPES:
             if not ticker:
-                logger.warning("Ticker is missing for stock/ETF asset type '%s'", normalized_asset_type)
+                logger.warning(
+                    "Ticker is missing for stock/ETF asset type '%s'",
+                    normalized_asset_type,
+                )
                 return None
             return self.get_stock_price(ticker)
 
         if normalized_asset_type in CRYPTO_ASSET_TYPES:
             if not ticker:
-                logger.warning("Ticker is missing for crypto asset type '%s'", normalized_asset_type)
+                logger.warning(
+                    "Ticker is missing for crypto asset type '%s'",
+                    normalized_asset_type,
+                )
                 return None
             return self.get_crypto_price(ticker)
 
@@ -176,7 +192,9 @@ class MarketDataService:
         try:
             import yfinance as yf
         except ImportError:
-            logger.error("yfinance is not installed; cannot resolve stock price for '%s'", ticker)
+            logger.error(
+                "yfinance is not installed; cannot resolve stock price for '%s'", ticker
+            )
             return None
 
         try:
@@ -210,10 +228,14 @@ class MarketDataService:
                     if price is not None:
                         return price
 
-            logger.warning("No stock market price returned by yfinance for ticker '%s'", ticker)
+            logger.warning(
+                "No stock market price returned by yfinance for ticker '%s'", ticker
+            )
             return None
         except Exception as exc:
-            logger.warning("Failed to fetch stock price for '%s': %s", ticker, exc, exc_info=True)
+            logger.warning(
+                "Failed to fetch stock price for '%s': %s", ticker, exc, exc_info=True
+            )
             return None
 
     def _resolve_crypto_coin_id(self, symbol: str) -> Optional[str]:
@@ -273,7 +295,9 @@ class MarketDataService:
         raw_price = coin_payload.get("usd")
         price = self._to_positive_float(raw_price)
         if price is None:
-            logger.warning("No USD price in CoinGecko response for coin id '%s'", coin_id)
+            logger.warning(
+                "No USD price in CoinGecko response for coin id '%s'", coin_id
+            )
         return price
 
     def _fetch_json(self, url: str) -> Optional[dict[str, Any]]:
@@ -304,7 +328,9 @@ class MarketDataService:
         """Fetch EUR/UAH from NBU public API."""
         return self._fetch_nbu_fx_rate("EUR", yyyymmdd=None)
 
-    def _fetch_nbu_fx_rate(self, valcode: str, yyyymmdd: Optional[str]) -> Optional[float]:
+    def _fetch_nbu_fx_rate(
+        self, valcode: str, yyyymmdd: Optional[str]
+    ) -> Optional[float]:
         """Fetch FX rate from NBU public API, with optional historical date."""
         normalized_valcode = (valcode or "").strip().upper()
         if normalized_valcode not in {"USD", "EUR"}:
@@ -312,7 +338,9 @@ class MarketDataService:
             return None
 
         if yyyymmdd:
-            url = NBU_FX_URL_TEMPLATE.format(valcode=normalized_valcode, yyyymmdd=yyyymmdd)
+            url = NBU_FX_URL_TEMPLATE.format(
+                valcode=normalized_valcode, yyyymmdd=yyyymmdd
+            )
         elif normalized_valcode == "USD":
             url = NBU_USD_UAH_URL
         else:
@@ -353,7 +381,9 @@ class MarketDataService:
             )
             return None
 
-    def _get_nbu_fx_rate(self, valcode: str, date_value: Optional[str]) -> Optional[float]:
+    def _get_nbu_fx_rate(
+        self, valcode: str, date_value: Optional[str]
+    ) -> Optional[float]:
         """Get FX rate with TTL cache and stale fallback."""
         normalized_valcode = (valcode or "").strip().upper()
         yyyymmdd = self._normalize_rate_date(date_value)
@@ -401,7 +431,9 @@ class MarketDataService:
             return cache_entry.value
 
     def _set_cached_price(self, key: str, value: float) -> None:
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=self.cache_ttl_seconds)
+        expires_at = datetime.now(timezone.utc) + timedelta(
+            seconds=self.cache_ttl_seconds
+        )
         with self._cache_lock:
             self._cache[key] = _CacheEntry(value=value, expires_at=expires_at)
             self._last_successful_values[key] = value

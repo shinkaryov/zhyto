@@ -51,7 +51,9 @@ class BrokenGenerator:
 class ShouldNotBeCalledGenerator:
     @staticmethod
     def generate(*args, **kwargs):
-        raise AssertionError("Generator should not be called for direct draft confirmation flow")
+        raise AssertionError(
+            "Generator should not be called for direct draft confirmation flow"
+        )
 
 
 def test_chat_returns_user_friendly_message_for_llm_unavailability(monkeypatch):
@@ -94,7 +96,9 @@ def test_chat_confirm_message_persists_pending_transaction_draft(monkeypatch):
     request = chat.ChatRequest(
         message="Так, додай",
         history=[
-            chat.ChatMessage(role="user", content="Вчора купив 20 акцій TSLA за 4000 доларів"),
+            chat.ChatMessage(
+                role="user", content="Вчора купив 20 акцій TSLA за 4000 доларів"
+            ),
             chat.ChatMessage(
                 role="assistant",
                 content="Готово. Я підготував запис: 20 TSLA по $200 за акцію. Додати в портфель?",

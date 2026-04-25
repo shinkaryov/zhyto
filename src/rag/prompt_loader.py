@@ -27,9 +27,13 @@ def load_prompt(template_path: str) -> str:
 def render_prompt(template_path: str, **variables: object) -> str:
     """Render prompt template with string.Template substitution."""
     raw = load_prompt(template_path)
-    normalized = {key: "" if value is None else str(value) for key, value in variables.items()}
+    normalized = {
+        key: "" if value is None else str(value) for key, value in variables.items()
+    }
     try:
         return Template(raw).safe_substitute(**normalized)
     except Exception:
-        logger.error("Failed to render prompt template '%s'", template_path, exc_info=True)
+        logger.error(
+            "Failed to render prompt template '%s'", template_path, exc_info=True
+        )
         raise

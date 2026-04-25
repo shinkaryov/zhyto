@@ -24,13 +24,17 @@ def to_float(value: Any) -> Optional[float]:
         return None
 
 
-def calculate_pnl_percent(purchase_price: Optional[float], current_price: Optional[float]) -> Optional[float]:
+def calculate_pnl_percent(
+    purchase_price: Optional[float], current_price: Optional[float]
+) -> Optional[float]:
     if current_price is None or purchase_price is None or purchase_price == 0:
         return None
     return ((current_price - purchase_price) / purchase_price) * 100
 
 
-def calculate_pnl_value(invested_value: Optional[float], current_value: Optional[float]) -> Optional[float]:
+def calculate_pnl_value(
+    invested_value: Optional[float], current_value: Optional[float]
+) -> Optional[float]:
     if invested_value is None or current_value is None:
         return None
     return current_value - invested_value
@@ -113,8 +117,12 @@ def resolve_purchase_fx_rates_by_date(
     usd_uah_by_date: dict[str, Optional[float]] = {}
     eur_uah_by_date: dict[str, Optional[float]] = {}
     for purchase_date in unique_dates:
-        usd_uah_by_date[purchase_date] = market_data_service.get_usd_uah_rate_for_date(purchase_date)
-        eur_uah_by_date[purchase_date] = market_data_service.get_eur_uah_rate_for_date(purchase_date)
+        usd_uah_by_date[purchase_date] = market_data_service.get_usd_uah_rate_for_date(
+            purchase_date
+        )
+        eur_uah_by_date[purchase_date] = market_data_service.get_eur_uah_rate_for_date(
+            purchase_date
+        )
     return usd_uah_by_date, eur_uah_by_date
 
 
@@ -165,7 +173,9 @@ def enrich_portfolio_asset(
             ticker=ticker,
             purchase_price=purchase_price,
         )
-        if current_price is None and market_data_service.is_market_traded_asset(asset_type):
+        if current_price is None and market_data_service.is_market_traded_asset(
+            asset_type
+        ):
             logger.warning(
                 "Current price unavailable for traded asset type='%s', ticker='%s', id='%s'",
                 asset_type,
@@ -173,7 +183,9 @@ def enrich_portfolio_asset(
                 asset.get("id"),
             )
 
-    if purchase_date and (purchase_usd_uah_rate is None or purchase_eur_uah_rate is None):
+    if purchase_date and (
+        purchase_usd_uah_rate is None or purchase_eur_uah_rate is None
+    ):
         logger.warning(
             "Historical FX rates unavailable for purchase_date='%s', asset id='%s'",
             purchase_date,
@@ -195,8 +207,16 @@ def enrich_portfolio_asset(
         logger=logger,
     )
 
-    invested_value_original = amount * purchase_price if amount is not None and purchase_price is not None else None
-    current_value_original = amount * current_price if amount is not None and current_price is not None else None
+    invested_value_original = (
+        amount * purchase_price
+        if amount is not None and purchase_price is not None
+        else None
+    )
+    current_value_original = (
+        amount * current_price
+        if amount is not None and current_price is not None
+        else None
+    )
 
     invested_value_uah, invested_value_usd, invested_value_eur = convert_current_value(
         amount=invested_value_original,
@@ -212,14 +232,22 @@ def enrich_portfolio_asset(
         eur_uah_rate=eur_uah_rate,
         logger=logger,
     )
-    pnl_percent_native = calculate_pnl_percent(purchase_price=purchase_price, current_price=current_price)
+    pnl_percent_native = calculate_pnl_percent(
+        purchase_price=purchase_price, current_price=current_price
+    )
 
     pnl_value_uah = calculate_pnl_value(invested_value_uah, current_value_uah)
     pnl_value_usd = calculate_pnl_value(invested_value_usd, current_value_usd)
     pnl_value_eur = calculate_pnl_value(invested_value_eur, current_value_eur)
-    pnl_percent_uah = calculate_pnl_percent_from_values(invested_value_uah, current_value_uah)
-    pnl_percent_usd = calculate_pnl_percent_from_values(invested_value_usd, current_value_usd)
-    pnl_percent_eur = calculate_pnl_percent_from_values(invested_value_eur, current_value_eur)
+    pnl_percent_uah = calculate_pnl_percent_from_values(
+        invested_value_uah, current_value_uah
+    )
+    pnl_percent_usd = calculate_pnl_percent_from_values(
+        invested_value_usd, current_value_usd
+    )
+    pnl_percent_eur = calculate_pnl_percent_from_values(
+        invested_value_eur, current_value_eur
+    )
 
     enriched_asset["current_price"] = current_price
     enriched_asset["purchase_price_uah"] = purchase_price_uah
@@ -247,7 +275,9 @@ def enrich_portfolio_asset(
     return enriched_asset
 
 
-def calculate_portfolio_totals(enriched_assets: list[dict[str, Any]]) -> dict[str, Optional[float]]:
+def calculate_portfolio_totals(
+    enriched_assets: list[dict[str, Any]],
+) -> dict[str, Optional[float]]:
     total_uah = 0.0
     total_usd = 0.0
     total_eur = 0.0
@@ -281,13 +311,17 @@ def enrich_portfolio_assets(
     market_data_service,
     *,
     logger: Any,
-) -> tuple[list[dict[str, Any]], dict[str, Optional[float]], Optional[float], Optional[float]]:
+) -> tuple[
+    list[dict[str, Any]], dict[str, Optional[float]], Optional[float], Optional[float]
+]:
     usd_uah_rate = market_data_service.get_usd_uah_rate()
     eur_uah_rate = market_data_service.get_eur_uah_rate()
-    purchase_usd_uah_by_date, purchase_eur_uah_by_date = resolve_purchase_fx_rates_by_date(
-        assets,
-        market_data_service,
-        logger=logger,
+    purchase_usd_uah_by_date, purchase_eur_uah_by_date = (
+        resolve_purchase_fx_rates_by_date(
+            assets,
+            market_data_service,
+            logger=logger,
+        )
     )
     enriched_assets: list[dict[str, Any]] = []
 

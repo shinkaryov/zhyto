@@ -13,7 +13,9 @@ from src.auth.auth_service import AuthIdentity, get_current_identity
 from src.utils import get_logger
 from src.db.cosmos_client import get_cosmos_client
 from src.services import get_market_data_service
-from src.services.portfolio_enrichment import enrich_portfolio_assets as shared_enrich_portfolio_assets
+from src.services.portfolio_enrichment import (
+    enrich_portfolio_assets as shared_enrich_portfolio_assets,
+)
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
@@ -56,6 +58,7 @@ def _parse_iso_date(value: str, field_name: str) -> date:
 
 class PortfolioAsset(BaseModel):
     """Portfolio asset model."""
+
     id: Optional[str] = None
     user_id: Optional[str] = None
     asset_type: str
@@ -131,10 +134,19 @@ class PortfolioAsset(BaseModel):
     @model_validator(mode="after")
     def validate_conditional_fields(self):
         purchase_date = _parse_iso_date(self.purchase_date, "Purchase date")
-        maturity_date = _parse_iso_date(self.maturity_date, "Maturity date") if self.maturity_date else None
+        maturity_date = (
+            _parse_iso_date(self.maturity_date, "Maturity date")
+            if self.maturity_date
+            else None
+        )
 
-        if self.asset_type not in ASSET_TYPES_WITH_OPTIONAL_PRICE and self.purchase_price <= 0:
-            raise ValueError("Purchase price must be greater than 0 for this asset type")
+        if (
+            self.asset_type not in ASSET_TYPES_WITH_OPTIONAL_PRICE
+            and self.purchase_price <= 0
+        ):
+            raise ValueError(
+                "Purchase price must be greater than 0 for this asset type"
+            )
 
         if self.asset_type in ASSET_TYPES_WITH_TICKER and not self.ticker:
             raise ValueError("Ticker is required for this asset type")
@@ -236,14 +248,18 @@ def _to_float(value: Any) -> Optional[float]:
         return None
 
 
-def _calculate_pnl_percent(purchase_price: Optional[float], current_price: Optional[float]) -> Optional[float]:
+def _calculate_pnl_percent(
+    purchase_price: Optional[float], current_price: Optional[float]
+) -> Optional[float]:
     """Calculate asset PnL percent safely."""
     if current_price is None or purchase_price is None or purchase_price == 0:
         return None
     return ((current_price - purchase_price) / purchase_price) * 100
 
 
-def _calculate_pnl_value(invested_value: Optional[float], current_value: Optional[float]) -> Optional[float]:
+def _calculate_pnl_value(
+    invested_value: Optional[float], current_value: Optional[float]
+) -> Optional[float]:
     """Calculate absolute PnL safely."""
     if invested_value is None or current_value is None:
         return None
@@ -327,8 +343,12 @@ def _resolve_purchase_fx_rates_by_date(
     eur_uah_by_date: dict[str, Optional[float]] = {}
 
     for purchase_date in unique_dates:
-        usd_uah_by_date[purchase_date] = market_data_service.get_usd_uah_rate_for_date(purchase_date)
-        eur_uah_by_date[purchase_date] = market_data_service.get_eur_uah_rate_for_date(purchase_date)
+        usd_uah_by_date[purchase_date] = market_data_service.get_usd_uah_rate_for_date(
+            purchase_date
+        )
+        eur_uah_by_date[purchase_date] = market_data_service.get_eur_uah_rate_for_date(
+            purchase_date
+        )
 
     return usd_uah_by_date, eur_uah_by_date
 
@@ -384,7 +404,9 @@ def _enrich_portfolio_asset(
             purchase_price=purchase_price,
         )
 
-        if current_price is None and market_data_service.is_market_traded_asset(asset_type):
+        if current_price is None and market_data_service.is_market_traded_asset(
+            asset_type
+        ):
             logger.warning(
                 "Current price unavailable for traded asset type='%s', ticker='%s', id='%s'",
                 asset_type,
@@ -392,7 +414,9 @@ def _enrich_portfolio_asset(
                 asset.get("id"),
             )
 
-    if purchase_date and (purchase_usd_uah_rate is None or purchase_eur_uah_rate is None):
+    if purchase_date and (
+        purchase_usd_uah_rate is None or purchase_eur_uah_rate is None
+    ):
         logger.warning(
             "Historical FX rates unavailable for purchase_date='%s', asset id='%s'",
             purchase_date,
@@ -412,8 +436,16 @@ def _enrich_portfolio_asset(
         eur_uah_rate=eur_uah_rate,
     )
 
-    invested_value_original = amount * purchase_price if amount is not None and purchase_price is not None else None
-    current_value_original = amount * current_price if amount is not None and current_price is not None else None
+    invested_value_original = (
+        amount * purchase_price
+        if amount is not None and purchase_price is not None
+        else None
+    )
+    current_value_original = (
+        amount * current_price
+        if amount is not None and current_price is not None
+        else None
+    )
 
     invested_value_uah, invested_value_usd, invested_value_eur = _convert_current_value(
         amount=invested_value_original,
@@ -427,14 +459,22 @@ def _enrich_portfolio_asset(
         usd_uah_rate=usd_uah_rate,
         eur_uah_rate=eur_uah_rate,
     )
-    pnl_percent_native = _calculate_pnl_percent(purchase_price=purchase_price, current_price=current_price)
+    pnl_percent_native = _calculate_pnl_percent(
+        purchase_price=purchase_price, current_price=current_price
+    )
 
     pnl_value_uah = _calculate_pnl_value(invested_value_uah, current_value_uah)
     pnl_value_usd = _calculate_pnl_value(invested_value_usd, current_value_usd)
     pnl_value_eur = _calculate_pnl_value(invested_value_eur, current_value_eur)
-    pnl_percent_uah = _calculate_pnl_percent_from_values(invested_value_uah, current_value_uah)
-    pnl_percent_usd = _calculate_pnl_percent_from_values(invested_value_usd, current_value_usd)
-    pnl_percent_eur = _calculate_pnl_percent_from_values(invested_value_eur, current_value_eur)
+    pnl_percent_uah = _calculate_pnl_percent_from_values(
+        invested_value_uah, current_value_uah
+    )
+    pnl_percent_usd = _calculate_pnl_percent_from_values(
+        invested_value_usd, current_value_usd
+    )
+    pnl_percent_eur = _calculate_pnl_percent_from_values(
+        invested_value_eur, current_value_eur
+    )
 
     enriched_asset["current_price"] = current_price
     enriched_asset["purchase_price_uah"] = purchase_price_uah
@@ -463,7 +503,9 @@ def _enrich_portfolio_asset(
     return enriched_asset
 
 
-def _calculate_portfolio_totals(enriched_assets: list[dict[str, Any]]) -> dict[str, Optional[float]]:
+def _calculate_portfolio_totals(
+    enriched_assets: list[dict[str, Any]],
+) -> dict[str, Optional[float]]:
     """Calculate aggregate totals using converted per-asset values only."""
     total_uah = 0.0
     total_usd = 0.0
@@ -494,8 +536,10 @@ def _calculate_portfolio_totals(enriched_assets: list[dict[str, Any]]) -> dict[s
 
 
 def _enrich_portfolio_assets(
-    assets: list[dict[str, Any]]
-) -> tuple[list[dict[str, Any]], dict[str, Optional[float]], Optional[float], Optional[float]]:
+    assets: list[dict[str, Any]],
+) -> tuple[
+    list[dict[str, Any]], dict[str, Optional[float]], Optional[float], Optional[float]
+]:
     """Enrich all assets and isolate failures per asset."""
     market_data_service = get_market_data_service()
     return shared_enrich_portfolio_assets(
@@ -510,8 +554,12 @@ async def get_portfolio(current_user: AuthIdentity = Depends(get_current_identit
     """Get user's portfolio."""
     try:
         client = get_cosmos_client()
-        assets = await run_in_threadpool(client.get_user_portfolio, current_user.user_id)
-        enriched_assets, totals, usd_uah_rate, eur_uah_rate = await run_in_threadpool(_enrich_portfolio_assets, assets)
+        assets = await run_in_threadpool(
+            client.get_user_portfolio, current_user.user_id
+        )
+        enriched_assets, totals, usd_uah_rate, eur_uah_rate = await run_in_threadpool(
+            _enrich_portfolio_assets, assets
+        )
         return {
             "assets": enriched_assets,
             "totals": totals,

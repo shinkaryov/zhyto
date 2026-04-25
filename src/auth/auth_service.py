@@ -170,7 +170,9 @@ def register_whitelisted_user(email: str, password: str) -> AuthIdentity:
     user_record["id"] = identity.user_id
     user_record["user_id"] = identity.user_id
     user_record["email"] = identity.email
-    user_record["password_hash"] = _hash_password(password, salt=salt, iterations=iterations)
+    user_record["password_hash"] = _hash_password(
+        password, salt=salt, iterations=iterations
+    )
     user_record["password_salt"] = _urlsafe_b64encode(salt)
     user_record["password_algo"] = "pbkdf2_sha256"
     user_record["password_iterations"] = iterations
@@ -362,7 +364,9 @@ def issue_access_token(identity: AuthIdentity) -> str:
             detail="Auth token secret is not configured.",
         )
 
-    payload_raw = json.dumps(_build_token_payload(identity), separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    payload_raw = json.dumps(
+        _build_token_payload(identity), separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
     payload_part = _urlsafe_b64encode(payload_raw)
     signature = hmac.new(secret, payload_part.encode("utf-8"), hashlib.sha256).digest()
     signature_part = _urlsafe_b64encode(signature)

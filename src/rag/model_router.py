@@ -72,7 +72,9 @@ class ChatModelRouter:
         default_deployment: str | None = None,
         advanced_deployment: str | None = None,
     ) -> None:
-        self.enabled = settings.enable_adaptive_model_routing if enabled is None else bool(enabled)
+        self.enabled = (
+            settings.enable_adaptive_model_routing if enabled is None else bool(enabled)
+        )
         self.default_deployment = (
             default_deployment
             or settings.azure_openai_default_deployment
@@ -104,9 +106,9 @@ class ChatModelRouter:
                 complexity_label="simple",
             )
 
-        if (
-            routing_intent == ROUTING_INTENT_PURE_LIVE_PRICE
-            or (requires_live_price_tool and routing_intent != ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE)
+        if routing_intent == ROUTING_INTENT_PURE_LIVE_PRICE or (
+            requires_live_price_tool
+            and routing_intent != ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE
         ):
             return ModelRoutingDecision(
                 selected_deployment=self.default_deployment,
@@ -121,7 +123,10 @@ class ChatModelRouter:
                 complexity_label="simple",
             )
 
-        if routing_intent in {ROUTING_INTENT_ANALYTICAL_RAG, ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE}:
+        if routing_intent in {
+            ROUTING_INTENT_ANALYTICAL_RAG,
+            ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE,
+        }:
             return ModelRoutingDecision(
                 selected_deployment=self.advanced_deployment,
                 reason="Analytical routing requires hypothesis/evidence synthesis and should use the advanced deployment.",
@@ -130,8 +135,14 @@ class ChatModelRouter:
 
         normalized = self._normalize(question)
         has_complex_language = any(hint in normalized for hint in self.COMPLEX_HINTS)
-        high_stakes = any(hint in normalized for hint in self.BROAD_OR_HIGH_STAKES_HINTS)
-        broad_query = normalized.count(" і ") >= 2 or normalized.count(" and ") >= 2 or len(normalized.split()) >= 22
+        high_stakes = any(
+            hint in normalized for hint in self.BROAD_OR_HIGH_STAKES_HINTS
+        )
+        broad_query = (
+            normalized.count(" і ") >= 2
+            or normalized.count(" and ") >= 2
+            or len(normalized.split()) >= 22
+        )
         portfolio_decision_support = has_portfolio_context and (
             "портфель" in normalized
             or "portfolio" in normalized

@@ -26,7 +26,9 @@ class CosmosDBClient:
             use_mock: Whether to use mock database. Defaults to settings.use_mock_cosmos.
         """
         self.use_mock = use_mock if use_mock is not None else settings.use_mock_cosmos
-        configured_mock_path = os.getenv("LOCAL_COSMOS_MOCK_FILE", "local_cosmos_db.json")
+        configured_mock_path = os.getenv(
+            "LOCAL_COSMOS_MOCK_FILE", "local_cosmos_db.json"
+        )
         self.mock_file = self._resolve_mock_file_path(configured_mock_path)
 
         self.client = None
@@ -51,7 +53,7 @@ class CosmosDBClient:
                 "users": [],
                 "notes": [],
                 "portfolio": [],
-                "chat_history": []
+                "chat_history": [],
             }
             with open(mock_path, "w", encoding="utf-8") as f:
                 json.dump(initial_data, f, ensure_ascii=False, indent=2)
@@ -96,7 +98,9 @@ class CosmosDBClient:
             self.database = self.client.get_database_client("ukraine_invest_db")
             self.users_container = self.database.get_container_client("users")
             self.notes_container = self.database.get_container_client("user_notes")
-            self.portfolio_container = self.database.get_container_client("portfolio_assets")
+            self.portfolio_container = self.database.get_container_client(
+                "portfolio_assets"
+            )
             self.chat_container = self.database.get_container_client("chat_history")
 
             logger.info("Cosmos DB initialized successfully")
@@ -191,7 +195,9 @@ class CosmosDBClient:
             return user_notes[:limit]
 
         try:
-            query = "SELECT * FROM c WHERE c.user_id = @user_id ORDER BY c.created_at DESC"
+            query = (
+                "SELECT * FROM c WHERE c.user_id = @user_id ORDER BY c.created_at DESC"
+            )
             return list(
                 self.notes_container.query_items(
                     query=query,
@@ -243,7 +249,8 @@ class CosmosDBClient:
             db = self._read_local_db()
             original_count = len(db.get("notes", []))
             db["notes"] = [
-                n for n in db.get("notes", [])
+                n
+                for n in db.get("notes", [])
                 if not (n.get("id") == note_id and n.get("user_id") == user_id)
             ]
             if len(db["notes"]) < original_count:
@@ -267,7 +274,8 @@ class CosmosDBClient:
             db = self._read_local_db()
             original_count = len(db.get("portfolio", []))
             db["portfolio"] = [
-                a for a in db.get("portfolio", [])
+                a
+                for a in db.get("portfolio", [])
                 if not (a.get("id") == asset_id and a.get("user_id") == user_id)
             ]
             if len(db["portfolio"]) < original_count:
@@ -303,13 +311,19 @@ class CosmosDBClient:
                     asset["updated_at"] = datetime.utcnow().isoformat()
                     self._write_local_db(db)
                     return asset
-            logger.warning(f"Portfolio asset {asset_id} not found for manual price update")
+            logger.warning(
+                f"Portfolio asset {asset_id} not found for manual price update"
+            )
             return None
 
         try:
-            asset = self.portfolio_container.read_item(item=asset_id, partition_key=user_id)
+            asset = self.portfolio_container.read_item(
+                item=asset_id, partition_key=user_id
+            )
         except Exception as e:
-            logger.warning(f"Portfolio asset {asset_id} not found for user {user_id}: {e}")
+            logger.warning(
+                f"Portfolio asset {asset_id} not found for user {user_id}: {e}"
+            )
             return None
 
         try:
@@ -330,12 +344,15 @@ class CosmosDBClient:
 
             return self.portfolio_container.replace_item(item=asset_id, body=asset)
         except Exception as e:
-            logger.error(f"Failed to update manual current price for asset {asset_id}: {e}")
+            logger.error(
+                f"Failed to update manual current price for asset {asset_id}: {e}"
+            )
             return None
 
 
 # Global Cosmos DB client instance
 _cosmos_client: Optional[CosmosDBClient] = None
+
 
 def get_cosmos_client() -> CosmosDBClient:
     """Get or create global Cosmos DB client instance."""

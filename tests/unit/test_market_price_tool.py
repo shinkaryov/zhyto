@@ -24,14 +24,20 @@ def test_tool_requires_asset_type():
 
 
 def test_tool_requires_ticker_for_market_assets(monkeypatch):
-    monkeypatch.setattr(market_price_tool, "get_market_data_service", lambda: StubMarketDataService())
-    result = market_price_tool.execute_get_current_market_price({"asset_type": "Акції (ETF)"})
+    monkeypatch.setattr(
+        market_price_tool, "get_market_data_service", lambda: StubMarketDataService()
+    )
+    result = market_price_tool.execute_get_current_market_price(
+        {"asset_type": "Акції (ETF)"}
+    )
     assert result["ok"] is False
     assert result["error_code"] == "missing_ticker"
 
 
 def test_tool_returns_structured_stock_price(monkeypatch):
-    monkeypatch.setattr(market_price_tool, "get_market_data_service", lambda: StubMarketDataService())
+    monkeypatch.setattr(
+        market_price_tool, "get_market_data_service", lambda: StubMarketDataService()
+    )
     result = market_price_tool.execute_get_current_market_price(
         {"asset_type": "Акції (ETF)", "ticker": "duol"}
     )
@@ -42,7 +48,9 @@ def test_tool_returns_structured_stock_price(monkeypatch):
 
 
 def test_tool_returns_static_fallback_without_fabrication(monkeypatch):
-    monkeypatch.setattr(market_price_tool, "get_market_data_service", lambda: StubMarketDataService())
+    monkeypatch.setattr(
+        market_price_tool, "get_market_data_service", lambda: StubMarketDataService()
+    )
     result = market_price_tool.execute_get_current_market_price(
         {"asset_type": "Депозит", "purchase_price": 1000.0, "currency": "UAH"}
     )

@@ -217,7 +217,9 @@ async def secret_questions() -> list[SecretQuestionResponse]:
         return await run_in_threadpool(list_secret_questions)
     except Exception as exc:
         logger.error("Failed to load secret questions: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to load secret questions.") from exc
+        raise HTTPException(
+            status_code=500, detail="Failed to load secret questions."
+        ) from exc
 
 
 @router.post("/reset-password", response_model=ResetPasswordResponse)
@@ -245,7 +247,9 @@ async def reset_password(payload: ResetPasswordRequest) -> ResetPasswordResponse
 
 
 @router.get("/me", response_model=AuthUserResponse)
-async def me(current_user: AuthIdentity = Depends(get_current_identity)) -> AuthUserResponse:
+async def me(
+    current_user: AuthIdentity = Depends(get_current_identity),
+) -> AuthUserResponse:
     """Return current authenticated profile."""
     return AuthUserResponse(
         email=current_user.email,

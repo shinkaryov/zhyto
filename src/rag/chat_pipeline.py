@@ -11,7 +11,11 @@ from threading import Lock
 from typing import Any, Optional
 
 from src.rag.chat_evidence import EvidenceSynthesizer, source_key as _source_key
-from src.rag.chat_intent import QueryIntentDetector, detect_language as _detect_language, normalize_text as _normalize_text
+from src.rag.chat_intent import (
+    QueryIntentDetector,
+    detect_language as _detect_language,
+    normalize_text as _normalize_text,
+)
 from src.rag.chat_reranker import DeterministicReranker, safe_float as _safe_float
 from src.rag.chat_types import (
     EvidencePack,
@@ -54,14 +58,16 @@ def _extract_json_block(text: str) -> Optional[str]:
     if stripped.startswith("{") and stripped.endswith("}"):
         return stripped
 
-    fenced = re.search(r"```(?:json)?\s*({[\s\S]*})\s*```", stripped, flags=re.IGNORECASE)
+    fenced = re.search(
+        r"```(?:json)?\s*({[\s\S]*})\s*```", stripped, flags=re.IGNORECASE
+    )
     if fenced:
         return fenced.group(1).strip()
 
     start = stripped.find("{")
     end = stripped.rfind("}")
     if start != -1 and end != -1 and end > start:
-        return stripped[start:end + 1].strip()
+        return stripped[start : end + 1].strip()
     return None
 
 
@@ -77,6 +83,7 @@ def _safe_json_loads(text: str) -> Optional[dict[str, Any]]:
     except json.JSONDecodeError:
         return None
     return None
+
 
 class AnalyticalChatPipeline:
     """End-to-end chat pipeline: retrieval -> synthesis -> analyst -> advisor."""
@@ -155,7 +162,9 @@ class AnalyticalChatPipeline:
             ]
 
     @staticmethod
-    def _cache_set_hypotheses(cache_key: str, hypotheses: list[HypothesisCandidate]) -> None:
+    def _cache_set_hypotheses(
+        cache_key: str, hypotheses: list[HypothesisCandidate]
+    ) -> None:
         ttl_seconds = max(int(settings.chat_hypothesis_cache_ttl_seconds), 0)
         if ttl_seconds <= 0:
             return
@@ -174,7 +183,9 @@ class AnalyticalChatPipeline:
                 ],
             )
             if len(_HYPOTHESIS_CACHE) > max_entries:
-                oldest_key = min(_HYPOTHESIS_CACHE, key=lambda key: _HYPOTHESIS_CACHE[key][0])
+                oldest_key = min(
+                    _HYPOTHESIS_CACHE, key=lambda key: _HYPOTHESIS_CACHE[key][0]
+                )
                 _HYPOTHESIS_CACHE.pop(oldest_key, None)
 
     @staticmethod
@@ -205,7 +216,9 @@ class AnalyticalChatPipeline:
                 json.loads(json.dumps(compression)),
             )
             if len(_COMPRESSION_CACHE) > max_entries:
-                oldest_key = min(_COMPRESSION_CACHE, key=lambda key: _COMPRESSION_CACHE[key][0])
+                oldest_key = min(
+                    _COMPRESSION_CACHE, key=lambda key: _COMPRESSION_CACHE[key][0]
+                )
                 _COMPRESSION_CACHE.pop(oldest_key, None)
 
     def _resolve_stage_deployments(
@@ -214,8 +227,12 @@ class AnalyticalChatPipeline:
         routing_intent: str,
         selected_deployment: str,
     ) -> dict[str, str]:
-        default_deployment = (self.model_router.default_deployment or selected_deployment).strip()
-        advanced_deployment = (self.model_router.advanced_deployment or selected_deployment).strip()
+        default_deployment = (
+            self.model_router.default_deployment or selected_deployment
+        ).strip()
+        advanced_deployment = (
+            self.model_router.advanced_deployment or selected_deployment
+        ).strip()
 
         stage_deployments = {
             "hypothesis": selected_deployment,
@@ -225,7 +242,11 @@ class AnalyticalChatPipeline:
         }
 
         if (
-            routing_intent in {ROUTING_INTENT_ANALYTICAL_RAG, ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE}
+            routing_intent
+            in {
+                ROUTING_INTENT_ANALYTICAL_RAG,
+                ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE,
+            }
             and selected_deployment == advanced_deployment
             and default_deployment
             and default_deployment != advanced_deployment
@@ -255,11 +276,19 @@ class AnalyticalChatPipeline:
             )
 
         if user_notes:
-            note_lines = [f"- {note.get('content', '')}" for note in user_notes[:20] if note.get("content")]
+            note_lines = [
+                f"- {note.get('content', '')}"
+                for note in user_notes[:20]
+                if note.get("content")
+            ]
             if note_lines:
                 context_parts.append("User Notes:\n" + "\n".join(note_lines))
 
-        return "\n\n".join(context_parts) if context_parts else "No user portfolio or notes context provided."
+        return (
+            "\n\n".join(context_parts)
+            if context_parts
+            else "No user portfolio or notes context provided."
+        )
 
     @staticmethod
     def _extract_citation_indices(text: str, max_index: int) -> list[int]:
@@ -275,7 +304,9 @@ class AnalyticalChatPipeline:
         return sorted(found)
 
     @staticmethod
-    def _source_payload_by_indices(sources: list[dict[str, Any]], indices: list[int]) -> list[dict[str, Any]]:
+    def _source_payload_by_indices(
+        sources: list[dict[str, Any]], indices: list[int]
+    ) -> list[dict[str, Any]]:
         index_set = set(indices)
         return [source for source in sources if source.get("index") in index_set]
 
@@ -326,9 +357,15 @@ class AnalyticalChatPipeline:
         include_portfolio_actions: bool = False,
     ) -> list[str]:
         categories: list[str] = []
-        if routing_intent in {ROUTING_INTENT_PURE_LIVE_PRICE, ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE}:
+        if routing_intent in {
+            ROUTING_INTENT_PURE_LIVE_PRICE,
+            ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE,
+        }:
             categories.append(TOOL_CATEGORY_LIVE_MARKET)
-        if include_portfolio_actions or routing_intent == ROUTING_INTENT_PORTFOLIO_TRANSACTION:
+        if (
+            include_portfolio_actions
+            or routing_intent == ROUTING_INTENT_PORTFOLIO_TRANSACTION
+        ):
             categories.append(TOOL_CATEGORY_PORTFOLIO_ACTION)
         return categories
 
@@ -378,7 +415,10 @@ class AnalyticalChatPipeline:
             "buy",
             "sell",
         )
-        has_transaction_verb = any(re.search(rf"\b{re.escape(verb)}\b", normalized) for verb in transaction_verbs)
+        has_transaction_verb = any(
+            re.search(rf"\b{re.escape(verb)}\b", normalized)
+            for verb in transaction_verbs
+        )
         if not has_transaction_verb:
             return False
 
@@ -402,7 +442,9 @@ class AnalyticalChatPipeline:
             "asset",
             "актив",
         )
-        has_asset_reference = has_ticker or any(hint in normalized for hint in asset_hints)
+        has_asset_reference = has_ticker or any(
+            hint in normalized for hint in asset_hints
+        )
         if not has_asset_reference:
             return False
 
@@ -422,7 +464,9 @@ class AnalyticalChatPipeline:
             "€",
             "₴",
         )
-        has_price_signal = number_count >= 2 or (number_count >= 1 and any(hint in normalized for hint in price_hints))
+        has_price_signal = number_count >= 2 or (
+            number_count >= 1 and any(hint in normalized for hint in price_hints)
+        )
 
         return has_price_signal
 
@@ -437,7 +481,9 @@ class AnalyticalChatPipeline:
         return ""
 
     @classmethod
-    def _is_portfolio_add_followup(cls, question: str, history: list[dict[str, Any]]) -> bool:
+    def _is_portfolio_add_followup(
+        cls, question: str, history: list[dict[str, Any]]
+    ) -> bool:
         if not history:
             return False
 
@@ -448,13 +494,23 @@ class AnalyticalChatPipeline:
         assistant_normalized = _normalize_text(last_assistant)
         asks_total_vs_unit = (
             (
-                any(token in assistant_normalized for token in ("total", "загальн", "сума"))
+                any(
+                    token in assistant_normalized
+                    for token in ("total", "загальн", "сума")
+                )
                 and any(
                     token in assistant_normalized
-                    for token in ("unit", "per share", "за одиниц", "ціна за одиниц", "ціна за акцію")
+                    for token in (
+                        "unit",
+                        "per share",
+                        "за одиниц",
+                        "ціна за одиниц",
+                        "ціна за акцію",
+                    )
                 )
             )
-            or "is 600 usd the total transaction amount or the price per share" in assistant_normalized
+            or "is 600 usd the total transaction amount or the price per share"
+            in assistant_normalized
         )
         if not asks_total_vs_unit:
             return False
@@ -494,7 +550,9 @@ class AnalyticalChatPipeline:
         )
         return short_followup and has_disambiguation_keyword
 
-    def _generate_with_optional_metadata(self, **kwargs: Any) -> tuple[str, Optional[dict[str, Any]]]:
+    def _generate_with_optional_metadata(
+        self, **kwargs: Any
+    ) -> tuple[str, Optional[dict[str, Any]]]:
         generate_structured = getattr(self.generator, "generate_structured", None)
         if callable(generate_structured):
             result = generate_structured(**kwargs)
@@ -554,14 +612,19 @@ class AnalyticalChatPipeline:
                     self._cache_set_hypotheses(cache_key, parsed_hypotheses)
                     return parsed_hypotheses
         except Exception:
-            logger.warning("Hypothesis generation failed, using deterministic fallback", exc_info=True)
+            logger.warning(
+                "Hypothesis generation failed, using deterministic fallback",
+                exc_info=True,
+            )
 
         fallback = self._fallback_hypotheses(question, routing_intent)
         self._cache_set_hypotheses(cache_key, fallback)
         return fallback
 
     @classmethod
-    def _parse_hypothesis_payload(cls, payload: dict[str, Any]) -> list[HypothesisCandidate]:
+    def _parse_hypothesis_payload(
+        cls, payload: dict[str, Any]
+    ) -> list[HypothesisCandidate]:
         raw_items = payload.get("hypotheses")
         if not isinstance(raw_items, list):
             return []
@@ -570,7 +633,9 @@ class AnalyticalChatPipeline:
         for index, item in enumerate(raw_items[: cls.HYPOTHESIS_COUNT_MAX], start=1):
             if not isinstance(item, dict):
                 continue
-            hypothesis_id = str(item.get("hypothesis_id") or f"H{index}").strip() or f"H{index}"
+            hypothesis_id = (
+                str(item.get("hypothesis_id") or f"H{index}").strip() or f"H{index}"
+            )
             short_title = str(item.get("short_title") or "").strip()
             description = str(item.get("description") or "").strip()
             evidence_query = str(item.get("evidence_query") or "").strip()
@@ -601,8 +666,13 @@ class AnalyticalChatPipeline:
         routing_intent: str,
     ) -> list[HypothesisCandidate]:
         normalized = _normalize_text(question)
-        has_ovdp = "овдп" in normalized or "ovdp" in normalized or "облігац" in normalized
-        has_crypto = any(token in normalized for token in ("bitcoin", "btc", "ethereum", "eth", "крипт"))
+        has_ovdp = (
+            "овдп" in normalized or "ovdp" in normalized or "облігац" in normalized
+        )
+        has_crypto = any(
+            token in normalized
+            for token in ("bitcoin", "btc", "ethereum", "eth", "крипт")
+        )
 
         if has_ovdp:
             return [
@@ -676,9 +746,11 @@ class AnalyticalChatPipeline:
         )
         if workers <= 1:
             for hypothesis in hypotheses:
-                evidence_by_hypothesis[hypothesis.hypothesis_id] = self._retrieve_single_hypothesis_evidence(
-                    hypothesis=hypothesis,
-                    intent=intent,
+                evidence_by_hypothesis[hypothesis.hypothesis_id] = (
+                    self._retrieve_single_hypothesis_evidence(
+                        hypothesis=hypothesis,
+                        intent=intent,
+                    )
                 )
             return evidence_by_hypothesis
 
@@ -705,7 +777,9 @@ class AnalyticalChatPipeline:
 
         # Keep deterministic ordering by hypothesis list order.
         return {
-            hypothesis.hypothesis_id: evidence_by_hypothesis.get(hypothesis.hypothesis_id, [])
+            hypothesis.hypothesis_id: evidence_by_hypothesis.get(
+                hypothesis.hypothesis_id, []
+            )
             for hypothesis in hypotheses
         }
 
@@ -776,7 +850,9 @@ class AnalyticalChatPipeline:
                         "channel": candidate.metadata.get("channel", "Unknown"),
                         "date": candidate.metadata.get("date", "N/A"),
                         "domain": candidate.metadata.get("domain", "N/A"),
-                        "trust_weight": _safe_float(candidate.metadata.get("trust_weight"), 0.5),
+                        "trust_weight": _safe_float(
+                            candidate.metadata.get("trust_weight"), 0.5
+                        ),
                         "score": round(candidate.rerank_score, 4),
                         "excerpt": candidate.content[:420],
                     }
@@ -791,7 +867,9 @@ class AnalyticalChatPipeline:
                 "short_title": hypothesis.short_title,
                 "description": hypothesis.description,
                 "evidence_query": hypothesis.evidence_query,
-                "evidence_snippets": snippets_by_hypothesis.get(hypothesis.hypothesis_id, []),
+                "evidence_snippets": snippets_by_hypothesis.get(
+                    hypothesis.hypothesis_id, []
+                ),
             }
             for hypothesis in hypotheses
         ]
@@ -825,14 +903,21 @@ class AnalyticalChatPipeline:
             )
             parsed = _safe_json_loads(raw or "")
             if parsed:
-                normalized = self._parse_compressed_evidence_payload(parsed, hypotheses, sources)
+                normalized = self._parse_compressed_evidence_payload(
+                    parsed, hypotheses, sources
+                )
                 if normalized:
                     self._cache_set_compression(cache_key, normalized)
                     return normalized
         except Exception:
-            logger.warning("Evidence compression failed, using deterministic fallback", exc_info=True)
+            logger.warning(
+                "Evidence compression failed, using deterministic fallback",
+                exc_info=True,
+            )
 
-        fallback = self._fallback_compressed_evidence_pack(hypotheses, snippets_by_hypothesis, sources)
+        fallback = self._fallback_compressed_evidence_pack(
+            hypotheses, snippets_by_hypothesis, sources
+        )
         self._cache_set_compression(cache_key, fallback)
         return fallback
 
@@ -846,7 +931,11 @@ class AnalyticalChatPipeline:
         if not isinstance(raw_hypotheses, list):
             return None
 
-        source_indices = {int(source.get("index")) for source in sources if str(source.get("index", "")).isdigit()}
+        source_indices = {
+            int(source.get("index"))
+            for source in sources
+            if str(source.get("index", "")).isdigit()
+        }
         normalized_hypotheses: list[dict[str, Any]] = []
 
         for hypothesis in raw_hypotheses:
@@ -859,10 +948,22 @@ class AnalyticalChatPipeline:
             if confidence not in {"low", "medium", "high"}:
                 confidence = "medium"
 
-            supporting = [int(item) for item in hypothesis.get("supporting_evidence", []) if isinstance(item, int) and item in source_indices]
-            contradicting = [int(item) for item in hypothesis.get("contradicting_evidence", []) if isinstance(item, int) and item in source_indices]
+            supporting = [
+                int(item)
+                for item in hypothesis.get("supporting_evidence", [])
+                if isinstance(item, int) and item in source_indices
+            ]
+            contradicting = [
+                int(item)
+                for item in hypothesis.get("contradicting_evidence", [])
+                if isinstance(item, int) and item in source_indices
+            ]
             source_notes_raw = hypothesis.get("source_notes", [])
-            source_notes = [str(note).strip() for note in source_notes_raw if str(note).strip()] if isinstance(source_notes_raw, list) else []
+            source_notes = (
+                [str(note).strip() for note in source_notes_raw if str(note).strip()]
+                if isinstance(source_notes_raw, list)
+                else []
+            )
 
             if not hypothesis_id:
                 continue
@@ -882,22 +983,33 @@ class AnalyticalChatPipeline:
             return None
 
         known_ids = {hypothesis.hypothesis_id for hypothesis in hypotheses}
-        normalized_hypotheses = [item for item in normalized_hypotheses if item["hypothesis_id"] in known_ids]
+        normalized_hypotheses = [
+            item for item in normalized_hypotheses if item["hypothesis_id"] in known_ids
+        ]
         if not normalized_hypotheses:
             return None
 
         consensus = str(payload.get("cross_source_consensus") or "").strip()
         uncertainties_raw = payload.get("major_uncertainties", [])
-        uncertainties = [str(item).strip() for item in uncertainties_raw if str(item).strip()] if isinstance(uncertainties_raw, list) else []
+        uncertainties = (
+            [str(item).strip() for item in uncertainties_raw if str(item).strip()]
+            if isinstance(uncertainties_raw, list)
+            else []
+        )
         sources_used_raw = payload.get("sources_used", [])
-        sources_used = [int(item) for item in sources_used_raw if isinstance(item, int) and item in source_indices]
+        sources_used = [
+            int(item)
+            for item in sources_used_raw
+            if isinstance(item, int) and item in source_indices
+        ]
 
         if not sources_used:
             sources_used = sorted(
                 {
                     idx
                     for item in normalized_hypotheses
-                    for idx in item["supporting_evidence"] + item["contradicting_evidence"]
+                    for idx in item["supporting_evidence"]
+                    + item["contradicting_evidence"]
                 }
             )
 
@@ -920,7 +1032,11 @@ class AnalyticalChatPipeline:
 
         for hypothesis in hypotheses:
             snippets = snippets_by_hypothesis.get(hypothesis.hypothesis_id, [])
-            supporting = [int(item["source_index"]) for item in snippets[:3] if isinstance(item.get("source_index"), int)]
+            supporting = [
+                int(item["source_index"])
+                for item in snippets[:3]
+                if isinstance(item.get("source_index"), int)
+            ]
             all_used_sources.update(supporting)
 
             confidence = "low"
@@ -969,9 +1085,23 @@ class AnalyticalChatPipeline:
 
         hypotheses_lines: list[str] = []
         for hypothesis in compressed_pack.get("hypotheses", []):
-            sup = " ".join(f"[{idx}]" for idx in hypothesis.get("supporting_evidence", [])) or "N/A"
-            con = " ".join(f"[{idx}]" for idx in hypothesis.get("contradicting_evidence", [])) or "N/A"
-            notes = " | ".join(hypothesis.get("source_notes", [])[:3]) if hypothesis.get("source_notes") else "N/A"
+            sup = (
+                " ".join(
+                    f"[{idx}]" for idx in hypothesis.get("supporting_evidence", [])
+                )
+                or "N/A"
+            )
+            con = (
+                " ".join(
+                    f"[{idx}]" for idx in hypothesis.get("contradicting_evidence", [])
+                )
+                or "N/A"
+            )
+            notes = (
+                " | ".join(hypothesis.get("source_notes", [])[:3])
+                if hypothesis.get("source_notes")
+                else "N/A"
+            )
             hypotheses_lines.append(
                 f"{hypothesis.get('hypothesis_id')}: {hypothesis.get('title')}\n"
                 f"Confidence: {hypothesis.get('confidence')}\n"
@@ -982,14 +1112,25 @@ class AnalyticalChatPipeline:
 
         consensus = compressed_pack.get("cross_source_consensus") or "N/A"
         uncertainties = compressed_pack.get("major_uncertainties") or []
-        uncertainty_block = "\n".join(f"- {item}" for item in uncertainties) if uncertainties else "- N/A"
-        sources_used = " ".join(f"[{idx}]" for idx in compressed_pack.get("sources_used", [])) or "N/A"
+        uncertainty_block = (
+            "\n".join(f"- {item}" for item in uncertainties)
+            if uncertainties
+            else "- N/A"
+        )
+        sources_used = (
+            " ".join(f"[{idx}]" for idx in compressed_pack.get("sources_used", []))
+            or "N/A"
+        )
 
         return (
             "COMPRESSED SOURCE MAP:\n"
             + ("\n".join(source_map) if source_map else "No sources.\n")
             + "\n\nHYPOTHESIS SUMMARY:\n"
-            + ("\n\n".join(hypotheses_lines) if hypotheses_lines else "No hypotheses.\n")
+            + (
+                "\n\n".join(hypotheses_lines)
+                if hypotheses_lines
+                else "No hypotheses.\n"
+            )
             + f"\n\nCROSS-SOURCE CONSENSUS:\n{consensus}\n\n"
             + f"MAJOR UNCERTAINTIES:\n{uncertainty_block}\n\n"
             + f"SOURCES USED:\n{sources_used}"
@@ -1034,7 +1175,9 @@ class AnalyticalChatPipeline:
             "chat_pipeline/analyst_compressed_user.txt",
             question=question,
             user_context=user_context,
-            compressed_evidence_pack=self._compressed_pack_to_prompt_text(compressed_pack),
+            compressed_evidence_pack=self._compressed_pack_to_prompt_text(
+                compressed_pack
+            ),
         )
 
         return self.generator.generate(
@@ -1093,20 +1236,22 @@ class AnalyticalChatPipeline:
         route_instruction = render_prompt("chat_pipeline/advisor_analytical_route.txt")
         tool_enabled = False
         if routing_intent == ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE:
-            route_instruction = render_prompt("chat_pipeline/advisor_analytical_live_route.txt")
+            route_instruction = render_prompt(
+                "chat_pipeline/advisor_analytical_live_route.txt"
+            )
             tool_enabled = True
 
         style_rules = render_prompt("chat_pipeline/advisor_style_rules.txt")
-        style_rules += (
-            "\nDo NOT cite live tool data as [n]."
-        )
+        style_rules += "\nDo NOT cite live tool data as [n]."
         system_prompt = f"{style_rules}\n\n{route_instruction}"
         prompt = render_prompt(
             "chat_pipeline/advisor_compressed_user.txt",
             question=question,
             user_context=user_context,
             analyst_artifact=analyst_artifact,
-            compressed_evidence_pack=self._compressed_pack_to_prompt_text(compressed_pack),
+            compressed_evidence_pack=self._compressed_pack_to_prompt_text(
+                compressed_pack
+            ),
         )
 
         return self.generator.generate(
@@ -1116,7 +1261,11 @@ class AnalyticalChatPipeline:
             max_tokens=self.TOKENS_ADVISOR_COMPRESSED,
             temperature=0.45,
             enable_market_price_tool=False,
-            tool_categories=self._tool_categories_for_intent(routing_intent) if tool_enabled else None,
+            tool_categories=(
+                self._tool_categories_for_intent(routing_intent)
+                if tool_enabled
+                else None
+            ),
             deployment=deployment,
             chat_intent=routing_intent,
         )
@@ -1142,7 +1291,9 @@ class AnalyticalChatPipeline:
             max_tokens=self.TOKENS_LIVE_PRICE,
             temperature=0.2,
             enable_market_price_tool=False,
-            tool_categories=self._tool_categories_for_intent(ROUTING_INTENT_PURE_LIVE_PRICE),
+            tool_categories=self._tool_categories_for_intent(
+                ROUTING_INTENT_PURE_LIVE_PRICE
+            ),
             deployment=deployment,
             chat_intent=ROUTING_INTENT_PURE_LIVE_PRICE,
         )
@@ -1198,7 +1349,9 @@ class AnalyticalChatPipeline:
         )
         routing_intent = intent.routing_intent
         language = _detect_language(question)
-        user_context = self._format_user_context(user_notes, user_portfolio, portfolio_totals)
+        user_context = self._format_user_context(
+            user_notes, user_portfolio, portfolio_totals
+        )
 
         scope_violation = detect_scope_violation(question)
         if scope_violation:
@@ -1249,14 +1402,18 @@ class AnalyticalChatPipeline:
             or self._is_portfolio_add_followup(question, history)
         ):
             draft_started_at = time.perf_counter()
-            raw_answer, pending_transaction_draft = self._draft_portfolio_transaction_step(
-                question=question,
-                history=history,
-                user_context=user_context,
-                deployment=selected_deployment,
-                routing_intent=routing_intent,
+            raw_answer, pending_transaction_draft = (
+                self._draft_portfolio_transaction_step(
+                    question=question,
+                    history=history,
+                    user_context=user_context,
+                    deployment=selected_deployment,
+                    routing_intent=routing_intent,
+                )
             )
-            stage_timings_ms["draft_ms"] = round((time.perf_counter() - draft_started_at) * 1000, 2)
+            stage_timings_ms["draft_ms"] = round(
+                (time.perf_counter() - draft_started_at) * 1000, 2
+            )
             if not raw_answer:
                 raw_answer = (
                     "Не вдалося підготувати чернетку транзакції. Уточніть, будь ласка, тип активу, кількість і валюту."
@@ -1268,7 +1425,9 @@ class AnalyticalChatPipeline:
                 routing_intent=ROUTING_INTENT_PORTFOLIO_TRANSACTION,
                 language=language,
             )
-            stage_timings_ms["total_ms"] = round((time.perf_counter() - pipeline_started_at) * 1000, 2)
+            stage_timings_ms["total_ms"] = round(
+                (time.perf_counter() - pipeline_started_at) * 1000, 2
+            )
             debug_payload = None
             if debug:
                 debug_payload = {
@@ -1307,13 +1466,17 @@ class AnalyticalChatPipeline:
                 user_context=user_context,
                 deployment=selected_deployment,
             ).strip()
-            stage_timings_ms["live_price_ms"] = round((time.perf_counter() - live_started_at) * 1000, 2)
+            stage_timings_ms["live_price_ms"] = round(
+                (time.perf_counter() - live_started_at) * 1000, 2
+            )
             final_answer, guardrail_hits, _ = self._apply_guardrails_to_output(
                 message=raw_answer,
                 routing_intent=routing_intent,
                 language=language,
             )
-            stage_timings_ms["total_ms"] = round((time.perf_counter() - pipeline_started_at) * 1000, 2)
+            stage_timings_ms["total_ms"] = round(
+                (time.perf_counter() - pipeline_started_at) * 1000, 2
+            )
             debug_payload = None
             if debug:
                 debug_payload = {
@@ -1339,33 +1502,43 @@ class AnalyticalChatPipeline:
             return PipelineResult(message=final_answer, sources=[], debug=debug_payload)
 
         if routing_intent == ROUTING_INTENT_FACTUAL_RAG:
-            stage1_k = max(settings.chat_retrieval_initial_top_k, settings.chat_rerank_top_k)
+            stage1_k = max(
+                settings.chat_retrieval_initial_top_k, settings.chat_rerank_top_k
+            )
             retrieve_started_at = time.perf_counter()
             stage1_raw = self.retriever.search(question, top_k=stage1_k)
             reranked = self.reranker.rerank(stage1_raw, intent)
             narrowed = reranked[: settings.chat_rerank_top_k]
             evidence_pack = self.synthesizer.synthesize(narrowed)
-            stage_timings_ms["retrieve_ms"] = round((time.perf_counter() - retrieve_started_at) * 1000, 2)
+            stage_timings_ms["retrieve_ms"] = round(
+                (time.perf_counter() - retrieve_started_at) * 1000, 2
+            )
 
             if not evidence_pack.sources:
-                stage_timings_ms["total_ms"] = round((time.perf_counter() - pipeline_started_at) * 1000, 2)
+                stage_timings_ms["total_ms"] = round(
+                    (time.perf_counter() - pipeline_started_at) * 1000, 2
+                )
                 return PipelineResult(
                     message=self._insufficient_message(language),
                     sources=[],
                     stage1_candidates=reranked,
                     reranked_candidates=narrowed,
                     evidence_pack=evidence_pack,
-                    debug={
-                        "routing_intent": routing_intent,
-                        "model_routing": model_routing.to_debug_dict(),
-                        "hypotheses": [],
-                        "evidence_by_hypothesis": {},
-                        "compressed_evidence_pack": None,
-                        "analyst_output": "",
-                        "guardrail_hits": [],
-                        "stage_deployments": stage_deployments,
-                        "stage_timings_ms": stage_timings_ms,
-                    } if debug else None,
+                    debug=(
+                        {
+                            "routing_intent": routing_intent,
+                            "model_routing": model_routing.to_debug_dict(),
+                            "hypotheses": [],
+                            "evidence_by_hypothesis": {},
+                            "compressed_evidence_pack": None,
+                            "analyst_output": "",
+                            "guardrail_hits": [],
+                            "stage_deployments": stage_deployments,
+                            "stage_timings_ms": stage_timings_ms,
+                        }
+                        if debug
+                        else None
+                    ),
                 )
 
             analyst_started_at = time.perf_counter()
@@ -1375,7 +1548,9 @@ class AnalyticalChatPipeline:
                 user_context=user_context,
                 deployment=stage_deployments["analyst"],
             )
-            stage_timings_ms["analyst_ms"] = round((time.perf_counter() - analyst_started_at) * 1000, 2)
+            stage_timings_ms["analyst_ms"] = round(
+                (time.perf_counter() - analyst_started_at) * 1000, 2
+            )
             advisor_started_at = time.perf_counter()
             raw_answer = self._advisor_step(
                 question=question,
@@ -1386,21 +1561,31 @@ class AnalyticalChatPipeline:
                 routing_intent=routing_intent,
                 deployment=stage_deployments["advisor"],
             ).strip()
-            stage_timings_ms["advisor_ms"] = round((time.perf_counter() - advisor_started_at) * 1000, 2)
-            final_answer, guardrail_hits, clear_sources = self._apply_guardrails_to_output(
-                message=raw_answer,
-                routing_intent=routing_intent,
-                language=language,
+            stage_timings_ms["advisor_ms"] = round(
+                (time.perf_counter() - advisor_started_at) * 1000, 2
             )
-            stage_timings_ms["total_ms"] = round((time.perf_counter() - pipeline_started_at) * 1000, 2)
+            final_answer, guardrail_hits, clear_sources = (
+                self._apply_guardrails_to_output(
+                    message=raw_answer,
+                    routing_intent=routing_intent,
+                    language=language,
+                )
+            )
+            stage_timings_ms["total_ms"] = round(
+                (time.perf_counter() - pipeline_started_at) * 1000, 2
+            )
 
             cited_indices: list[int] = []
             if not clear_sources:
-                cited_indices = self._extract_citation_indices(final_answer, max_index=len(evidence_pack.sources))
+                cited_indices = self._extract_citation_indices(
+                    final_answer, max_index=len(evidence_pack.sources)
+                )
             if evidence_pack.sources and not cited_indices and not clear_sources:
                 fallback_indices = [
                     source["index"]
-                    for source in evidence_pack.sources[: min(3, len(evidence_pack.sources))]
+                    for source in evidence_pack.sources[
+                        : min(3, len(evidence_pack.sources))
+                    ]
                 ]
                 citation_line = " ".join(f"[{idx}]" for idx in fallback_indices)
                 label = "Джерела" if language == "uk" else "Sources"
@@ -1409,7 +1594,9 @@ class AnalyticalChatPipeline:
 
             used_sources: list[dict[str, Any]] = []
             if not clear_sources:
-                used_sources = self._source_payload_by_indices(evidence_pack.sources, cited_indices)
+                used_sources = self._source_payload_by_indices(
+                    evidence_pack.sources, cited_indices
+                )
             debug_payload = None
             if debug:
                 debug_payload = {
@@ -1455,30 +1642,46 @@ class AnalyticalChatPipeline:
             routing_intent=routing_intent,
             deployment=stage_deployments["hypothesis"],
         )
-        stage_timings_ms["hypotheses_ms"] = round((time.perf_counter() - hypothesis_started_at) * 1000, 2)
+        stage_timings_ms["hypotheses_ms"] = round(
+            (time.perf_counter() - hypothesis_started_at) * 1000, 2
+        )
         retrieve_started_at = time.perf_counter()
-        evidence_by_hypothesis = self._retrieve_evidence_for_hypotheses(hypotheses, intent)
-        stage_timings_ms["retrieve_ms"] = round((time.perf_counter() - retrieve_started_at) * 1000, 2)
+        evidence_by_hypothesis = self._retrieve_evidence_for_hypotheses(
+            hypotheses, intent
+        )
+        stage_timings_ms["retrieve_ms"] = round(
+            (time.perf_counter() - retrieve_started_at) * 1000, 2
+        )
         sources, source_lookup = self._build_source_registry_from_hypothesis_evidence(
             evidence_by_hypothesis
         )
 
         if routing_intent == ROUTING_INTENT_ANALYTICAL_RAG and not sources:
-            stage_timings_ms["total_ms"] = round((time.perf_counter() - pipeline_started_at) * 1000, 2)
+            stage_timings_ms["total_ms"] = round(
+                (time.perf_counter() - pipeline_started_at) * 1000, 2
+            )
             return PipelineResult(
                 message=self._insufficient_message(language),
                 sources=[],
-                debug={
-                    "routing_intent": routing_intent,
-                    "model_routing": model_routing.to_debug_dict(),
-                    "hypotheses": [hypothesis.__dict__ for hypothesis in hypotheses] if debug else [],
-                    "evidence_by_hypothesis": {},
-                    "compressed_evidence_pack": None,
-                    "analyst_output": "",
-                    "guardrail_hits": [],
-                    "stage_deployments": stage_deployments,
-                    "stage_timings_ms": stage_timings_ms,
-                } if debug else None,
+                debug=(
+                    {
+                        "routing_intent": routing_intent,
+                        "model_routing": model_routing.to_debug_dict(),
+                        "hypotheses": (
+                            [hypothesis.__dict__ for hypothesis in hypotheses]
+                            if debug
+                            else []
+                        ),
+                        "evidence_by_hypothesis": {},
+                        "compressed_evidence_pack": None,
+                        "analyst_output": "",
+                        "guardrail_hits": [],
+                        "stage_deployments": stage_deployments,
+                        "stage_timings_ms": stage_timings_ms,
+                    }
+                    if debug
+                    else None
+                ),
             )
 
         compression_started_at = time.perf_counter()
@@ -1491,7 +1694,9 @@ class AnalyticalChatPipeline:
             deployment=stage_deployments["compression"],
             routing_intent=routing_intent,
         )
-        stage_timings_ms["compression_ms"] = round((time.perf_counter() - compression_started_at) * 1000, 2)
+        stage_timings_ms["compression_ms"] = round(
+            (time.perf_counter() - compression_started_at) * 1000, 2
+        )
 
         analyst_started_at = time.perf_counter()
         analyst_artifact = self._analyst_step_from_compressed(
@@ -1501,7 +1706,9 @@ class AnalyticalChatPipeline:
             routing_intent=routing_intent,
             deployment=stage_deployments["analyst"],
         )
-        stage_timings_ms["analyst_ms"] = round((time.perf_counter() - analyst_started_at) * 1000, 2)
+        stage_timings_ms["analyst_ms"] = round(
+            (time.perf_counter() - analyst_started_at) * 1000, 2
+        )
 
         advisor_started_at = time.perf_counter()
         raw_answer = self._advisor_step_from_compressed(
@@ -1513,23 +1720,40 @@ class AnalyticalChatPipeline:
             routing_intent=routing_intent,
             deployment=stage_deployments["advisor"],
         ).strip()
-        stage_timings_ms["advisor_ms"] = round((time.perf_counter() - advisor_started_at) * 1000, 2)
+        stage_timings_ms["advisor_ms"] = round(
+            (time.perf_counter() - advisor_started_at) * 1000, 2
+        )
         final_answer, guardrail_hits, clear_sources = self._apply_guardrails_to_output(
             message=raw_answer,
             routing_intent=routing_intent,
             language=language,
         )
-        stage_timings_ms["total_ms"] = round((time.perf_counter() - pipeline_started_at) * 1000, 2)
+        stage_timings_ms["total_ms"] = round(
+            (time.perf_counter() - pipeline_started_at) * 1000, 2
+        )
 
         cited_indices: list[int] = []
         if not clear_sources:
-            cited_indices = self._extract_citation_indices(final_answer, max_index=len(sources))
-        if routing_intent == ROUTING_INTENT_ANALYTICAL_RAG and sources and not cited_indices and not clear_sources:
-            fallback_indices = [source["index"] for source in sources[: min(3, len(sources))]]
+            cited_indices = self._extract_citation_indices(
+                final_answer, max_index=len(sources)
+            )
+        if (
+            routing_intent == ROUTING_INTENT_ANALYTICAL_RAG
+            and sources
+            and not cited_indices
+            and not clear_sources
+        ):
+            fallback_indices = [
+                source["index"] for source in sources[: min(3, len(sources))]
+            ]
             label = "Джерела" if language == "uk" else "Sources"
             final_answer = f"{final_answer}\n\n{label}: {' '.join(f'[{idx}]' for idx in fallback_indices)}"
             cited_indices = fallback_indices
-        used_sources = self._source_payload_by_indices(sources, cited_indices) if (sources and not clear_sources) else []
+        used_sources = (
+            self._source_payload_by_indices(sources, cited_indices)
+            if (sources and not clear_sources)
+            else []
+        )
 
         debug_payload = None
         if debug:
@@ -1540,12 +1764,16 @@ class AnalyticalChatPipeline:
                 "evidence_by_hypothesis": {
                     hypothesis_id: [
                         {
-                            "source_index": source_lookup.get(_source_key(item.metadata, item.content)),
+                            "source_index": source_lookup.get(
+                                _source_key(item.metadata, item.content)
+                            ),
                             "score": round(item.rerank_score, 4),
                             "channel": item.metadata.get("channel", "Unknown"),
                             "date": item.metadata.get("date", "N/A"),
                         }
-                        for item in candidates[: self.HYPOTHESIS_SNIPPETS_PER_HYPOTHESIS]
+                        for item in candidates[
+                            : self.HYPOTHESIS_SNIPPETS_PER_HYPOTHESIS
+                        ]
                     ]
                     for hypothesis_id, candidates in evidence_by_hypothesis.items()
                 },

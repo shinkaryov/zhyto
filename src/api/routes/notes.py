@@ -18,6 +18,7 @@ router = APIRouter(prefix="/notes", tags=["notes"])
 
 class Note(BaseModel):
     """Note model."""
+
     id: Optional[str] = None
     user_id: Optional[str] = None
     content: str
@@ -39,7 +40,9 @@ async def get_notes(
     """Get user's notes."""
     try:
         client = get_cosmos_client()
-        notes = await run_in_threadpool(client.get_user_notes, current_user.user_id, limit)
+        notes = await run_in_threadpool(
+            client.get_user_notes, current_user.user_id, limit
+        )
         return {"notes": notes}
     except HTTPException:
         raise
@@ -75,7 +78,9 @@ async def delete_note(
     """Delete a note."""
     try:
         client = get_cosmos_client()
-        success = await run_in_threadpool(client.delete_note, note_id, current_user.user_id)
+        success = await run_in_threadpool(
+            client.delete_note, note_id, current_user.user_id
+        )
         if not success:
             raise HTTPException(status_code=404, detail="Note not found")
         return {"success": True}

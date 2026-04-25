@@ -32,10 +32,18 @@ def build_system_prompt(
     elif routing_intent == ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE:
         system_prompt += "\n\n" + render_prompt("chat_route/mode_analytical_live.txt")
     elif routing_intent == ROUTING_INTENT_PORTFOLIO_TRANSACTION:
-        system_prompt += "\n\n" + render_prompt("chat_route/mode_generic.txt", mode_label="PORTFOLIO_TRANSACTION")
+        system_prompt += "\n\n" + render_prompt(
+            "chat_route/mode_generic.txt", mode_label="PORTFOLIO_TRANSACTION"
+        )
     else:
-        mode_label = "ANALYTICAL_RAG" if routing_intent == ROUTING_INTENT_ANALYTICAL_RAG else "FACTUAL_RAG"
-        system_prompt += "\n\n" + render_prompt("chat_route/mode_generic.txt", mode_label=mode_label)
+        mode_label = (
+            "ANALYTICAL_RAG"
+            if routing_intent == ROUTING_INTENT_ANALYTICAL_RAG
+            else "FACTUAL_RAG"
+        )
+        system_prompt += "\n\n" + render_prompt(
+            "chat_route/mode_generic.txt", mode_label=mode_label
+        )
 
     if user_portfolio or user_notes:
         system_prompt += "\n\n--- ПЕРСОНАЛЬНИЙ КОНТЕКСТ КОРИСТУВАЧА ---\n"
@@ -85,9 +93,13 @@ def build_user_only_summary(user_messages: list[str], language: str) -> str:
         raise ValueError("No user messages to summarize")
 
     clipped = compact_messages[-12:]
-    prompt_payload = "\n".join(f"{idx + 1}. {message}" for idx, message in enumerate(clipped))
+    prompt_payload = "\n".join(
+        f"{idx + 1}. {message}" for idx, message in enumerate(clipped)
+    )
     summary_language = "English" if language == "en" else "Ukrainian"
-    system_prompt = render_prompt("chat_route/summary_system.txt", summary_language=summary_language)
+    system_prompt = render_prompt(
+        "chat_route/summary_system.txt", summary_language=summary_language
+    )
 
     try:
         generator = get_generator()
