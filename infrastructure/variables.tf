@@ -309,6 +309,12 @@ variable "chroma_share_quota_gb" {
   default     = 100
 }
 
+variable "extra_storage_data_principal_object_ids" {
+  description = "Optional additional Entra object IDs to grant Blob/File data access on storage account"
+  type        = list(string)
+  default     = []
+}
+
 # ============================================================
 # App Settings / Auth
 # ============================================================

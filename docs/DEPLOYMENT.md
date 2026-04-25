@@ -54,6 +54,16 @@ Service principal used by `AZURE_CREDENTIALS` should be able to:
 - Update Web App configuration
 - Read/write Blob and File data in storage account (for static site + snapshots)
 
+Terraform now creates storage data-plane role assignments on the storage account for the identity running `terraform apply`:
+- `Storage Blob Data Contributor`
+- `Storage File Data SMB Share Contributor`
+
+If you also want your personal Entra user to upload blobs/files locally with `--auth-mode login`, add your Entra object ID to `extra_storage_data_principal_object_ids` and re-apply infra.
+
+In GitHub Actions `infra-deploy.yml`, you can pass this without code changes via workflow input:
+- `extra_storage_data_principal_object_ids_json`
+- Example: `["11111111-2222-3333-4444-555555555555"]`
+
 ## Chroma Snapshot Restore
 
 `data-restore.yml` workflow performs:

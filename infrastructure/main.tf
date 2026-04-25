@@ -22,6 +22,17 @@ provider "azurerm" {
   tenant_id       = var.azure_tenant_id
 }
 
+data "azurerm_client_config" "current" {}
+
+locals {
+  storage_data_principal_object_ids = distinct(
+    concat(
+      [data.azurerm_client_config.current.object_id],
+      var.extra_storage_data_principal_object_ids
+    )
+  )
+}
+
 # ============================================================
 # Resource Group
 # ============================================================
@@ -94,6 +105,23 @@ module "storage" {
     var.common_tags,
     { Name = "ukraine-invest-storage" }
   )
+}
+
+# Grant storage data-plane access to deployment principal (and optionally extra principals)
+resource "azurerm_role_assignment" "storage_blob_data_contributor" {
+  for_each = toset(local.storage_data_principal_object_ids)
+
+  scope                = module.storage.storage_account_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = each.value
+}
+
+resource "azurerm_role_assignment" "storage_file_data_smb_share_contributor" {
+  for_each = toset(local.storage_data_principal_object_ids)
+
+  scope                = module.storage.storage_account_id
+  role_definition_name = "Storage File Data SMB Share Contributor"
+  principal_id         = each.value
 }
 
 # ============================================================

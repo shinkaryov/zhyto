@@ -11,6 +11,10 @@ on:
         options:
           - plan
           - apply
+      extra_storage_data_principal_object_ids_json:
+        description: Optional JSON array of Entra object IDs for storage Blob/File data access (example ["<obj-id>"])
+        required: true
+        default: "[]"
 
 env:
   TF_VERSION: '1.8.5'
@@ -86,6 +90,7 @@ jobs:
           TF_VAR_azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           TF_VAR_azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
           TF_VAR_auth_token_secret: ${{ secrets.AUTH_TOKEN_SECRET }}
+          TF_VAR_extra_storage_data_principal_object_ids: ${{ inputs.extra_storage_data_principal_object_ids_json }}
 
       - name: Terraform Apply
         if: ${{ inputs.action == 'apply' }}

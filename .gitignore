@@ -150,6 +150,7 @@ terraform.tfvars
 *.db
 .chroma/
 chroma_data/
+chroma-prod-*
 
 # Project specific
 credentials/

@@ -62,6 +62,7 @@ openai_embedding_deployment_sku_capacity = 1
 storage_account_name  = "sazhytoukrinvest"
 chroma_share_name     = "chroma-zhyto-ukrinvest"
 chroma_share_quota_gb = 100
+extra_storage_data_principal_object_ids = []
 
 # App auth config
 entra_redirect_uri = "http://localhost:3000"
