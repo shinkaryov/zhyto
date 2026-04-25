@@ -56,6 +56,46 @@ jobs:
             --name "${{ env.CHROMA_SHARE_NAME }}" \
             --quota 100
 
+      - name: Ensure Chroma Azure Files share exists
+        run: |
+          set -euo pipefail
+
+          for i in {1..20}; do
+            if az storage share-rm show \
+              --storage-account "${{ env.STORAGE_ACCOUNT_NAME }}" \
+              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+              --name "${{ env.CHROMA_SHARE_NAME }}" >/dev/null 2>&1; then
+              echo "Chroma share exists."
+              exit 0
+            fi
+
+            echo "Attempt $i: share missing, trying to create..."
+            CREATE_OUT="$(mktemp)"
+            if az storage share-rm create \
+              --storage-account "${{ env.STORAGE_ACCOUNT_NAME }}" \
+              --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+              --name "${{ env.CHROMA_SHARE_NAME }}" \
+              --quota 100 >"$CREATE_OUT" 2>&1; then
+              echo "Chroma share created."
+              rm -f "$CREATE_OUT"
+              exit 0
+            fi
+
+            if grep -qi "ShareBeingDeleted" "$CREATE_OUT"; then
+              echo "Share is still being deleted, waiting..."
+              rm -f "$CREATE_OUT"
+              sleep 15
+              continue
+            fi
+
+            cat "$CREATE_OUT"
+            rm -f "$CREATE_OUT"
+            exit 1
+          done
+
+          echo "Timed out waiting for share to be available."
+          exit 1
+
       - name: Download Chroma snapshot blob
         run: |
           set -euo pipefail
@@ -94,6 +134,9 @@ jobs:
           if [ -d "$ROOT/chroma_data" ]; then
             SOURCE_DIR="$ROOT/chroma_data"
           fi
+
+          # Drop macOS AppleDouble files that are not part of Chroma content.
+          find "$SOURCE_DIR" -type f -name "._*" -delete
 
           az storage file upload-batch \
             --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
