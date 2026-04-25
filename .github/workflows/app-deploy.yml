@@ -18,6 +18,13 @@ on:
         required: true
         default: latest
 
+env:
+  AZURE_RESOURCE_GROUP: rg-zhyto-ukrinvest
+  ACR_NAME: acrzhytoukrinvest
+  BACKEND_WEB_APP_NAME: app-zhyto-ukrinvest
+  STORAGE_ACCOUNT_NAME: sazhytoukrinvest
+  AUTH_WHITELIST_BLOB_NAME: email_whitelist.txt
+
 jobs:
   deploy-backend:
     if: ${{ inputs.deploy_backend }}
@@ -41,8 +48,8 @@ jobs:
         run: |
           set -euo pipefail
           LOGIN_SERVER=$(az acr show \
-            --name "${{ secrets.ACR_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.ACR_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
             --query loginServer -o tsv)
           echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
 
@@ -51,13 +58,13 @@ jobs:
           set -euo pipefail
           mkdir -p src/auth
 
-          BLOB_NAME="${{ secrets.AUTH_WHITELIST_BLOB_NAME }}"
+          BLOB_NAME="${{ env.AUTH_WHITELIST_BLOB_NAME }}"
           if [ -z "$BLOB_NAME" ]; then
             BLOB_NAME="email_whitelist.txt"
           fi
 
           az storage blob download \
-            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
             --auth-mode login \
             --container-name "raw-data" \
             --name "$BLOB_NAME" \
@@ -70,7 +77,7 @@ jobs:
           set -euo pipefail
           IMAGE="${{ steps.acr.outputs.login_server }}/ukraine-invest-backend:${{ inputs.image_tag }}"
 
-          az acr login --name "${{ secrets.ACR_NAME }}"
+          az acr login --name "${{ env.ACR_NAME }}"
           docker build -f backend/Dockerfile -t "$IMAGE" .
           docker push "$IMAGE"
 
@@ -80,30 +87,30 @@ jobs:
           IMAGE="${{ steps.acr.outputs.login_server }}/ukraine-invest-backend:${{ inputs.image_tag }}"
 
           az webapp config container set \
-            --name "${{ secrets.BACKEND_WEB_APP_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.BACKEND_WEB_APP_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
             --container-image-name "$IMAGE" \
             --container-registry-url "https://${{ steps.acr.outputs.login_server }}"
 
           # Ensure ACR pull keeps using the web app managed identity (no ACR admin creds needed).
           az webapp config set \
-            --name "${{ secrets.BACKEND_WEB_APP_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.BACKEND_WEB_APP_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
             --generic-configurations '{"acrUseManagedIdentityCreds": true}'
 
           az webapp config appsettings set \
-            --name "${{ secrets.BACKEND_WEB_APP_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.BACKEND_WEB_APP_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
             --settings WEBSITES_PORT=8000
 
           az webapp restart \
-            --name "${{ secrets.BACKEND_WEB_APP_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}"
+            --name "${{ env.BACKEND_WEB_APP_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}"
 
       - name: Verify backend health
         run: |
           set -euo pipefail
-          BACKEND_URL="https://${{ secrets.BACKEND_WEB_APP_NAME }}.azurewebsites.net/health"
+          BACKEND_URL="https://${{ env.BACKEND_WEB_APP_NAME }}.azurewebsites.net/health"
 
           for i in {1..30}; do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL" || echo "000")
@@ -142,10 +149,7 @@ jobs:
           set -euo pipefail
           cd frontend
 
-          API_BASE_URL="${{ secrets.FRONTEND_API_BASE_URL }}"
-          if [ -z "$API_BASE_URL" ]; then
-            API_BASE_URL="https://${{ secrets.BACKEND_WEB_APP_NAME }}.azurewebsites.net"
-          fi
+          API_BASE_URL="https://${{ env.BACKEND_WEB_APP_NAME }}.azurewebsites.net"
 
           npm ci
           VITE_API_URL="$API_BASE_URL" npm run build
@@ -159,7 +163,7 @@ jobs:
         run: |
           set -euo pipefail
           az storage blob upload-batch \
-            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
             --auth-mode login \
             --destination '$web' \
             --source frontend/dist \
@@ -169,7 +173,7 @@ jobs:
         run: |
           set -euo pipefail
           FRONTEND_URL=$(az storage account show \
-            --name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.STORAGE_ACCOUNT_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
             --query "primaryEndpoints.web" -o tsv)
           echo "Frontend available at: $FRONTEND_URL"

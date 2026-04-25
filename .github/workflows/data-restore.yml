@@ -17,6 +17,12 @@ on:
         type: boolean
         default: false
 
+env:
+  AZURE_RESOURCE_GROUP: rg-zhyto-ukrinvest
+  STORAGE_ACCOUNT_NAME: sazhytoukrinvest
+  CHROMA_SHARE_NAME: chroma-zhyto-ukrinvest
+  BACKEND_WEB_APP_NAME: app-zhyto-ukrinvest
+
 jobs:
   restore:
     runs-on: ubuntu-latest
@@ -39,15 +45,15 @@ jobs:
         run: |
           set -euo pipefail
           az storage share-rm delete \
-            --storage-account "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --name "${{ secrets.CHROMA_SHARE_NAME }}" \
+            --storage-account "${{ env.STORAGE_ACCOUNT_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.CHROMA_SHARE_NAME }}" \
             --yes || true
 
           az storage share-rm create \
-            --storage-account "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --name "${{ secrets.CHROMA_SHARE_NAME }}" \
+            --storage-account "${{ env.STORAGE_ACCOUNT_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.CHROMA_SHARE_NAME }}" \
             --quota 100
 
       - name: Download Chroma snapshot blob
@@ -57,7 +63,7 @@ jobs:
           SNAPSHOT_PATH="/tmp/chroma-restore/snapshot"
 
           az storage blob download \
-            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
             --auth-mode login \
             --container-name "chroma-snapshots" \
             --name "${{ inputs.chroma_snapshot_blob }}" \
@@ -90,10 +96,10 @@ jobs:
           fi
 
           az storage file upload-batch \
-            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
             --auth-mode login \
             --source "$SOURCE_DIR" \
-            --destination "${{ secrets.CHROMA_SHARE_NAME }}" \
+            --destination "${{ env.CHROMA_SHARE_NAME }}" \
             --overwrite
 
       - name: Optional upload of raw JSON artifacts
@@ -101,7 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           az storage blob upload-batch \
-            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
             --auth-mode login \
             --destination "raw-data" \
             --source "src/invest_app_data" \
@@ -110,5 +116,5 @@ jobs:
       - name: Restart backend to pick restored Chroma files
         run: |
           az webapp restart \
-            --name "${{ secrets.BACKEND_WEB_APP_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}"
+            --name "${{ env.BACKEND_WEB_APP_NAME }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}"

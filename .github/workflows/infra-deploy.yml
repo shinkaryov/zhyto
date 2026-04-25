@@ -16,6 +16,16 @@ env:
   TF_VERSION: '1.8.5'
   TF_VAR_environment: prod
   TF_VAR_azure_location: polandcentral
+  TF_VAR_resource_group_name: rg-zhyto-ukrinvest
+  TF_VAR_container_registry_name: acrzhytoukrinvest
+  TF_VAR_web_app_name: app-zhyto-ukrinvest
+  TF_VAR_app_service_plan_name: asp-zhyto-ukrinvest
+  TF_VAR_cosmos_db_account_name: cosmos-zhyto-ukrinvest
+  TF_VAR_keyvault_name: kv-zhyto-ukrinvest
+  TF_VAR_storage_account_name: sazhytoukrinvest
+  TF_VAR_chroma_share_name: chroma-zhyto-ukrinvest
+  TF_VAR_openai_account_name: oaizhytoukrinvest
+  TF_VAR_openai_custom_subdomain_name: oaizhytoukrinvest
 
 jobs:
   terraform:
@@ -61,13 +71,6 @@ jobs:
         env:
           TF_VAR_azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           TF_VAR_azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
-          TF_VAR_container_registry_name: ${{ secrets.ACR_NAME }}
-          TF_VAR_web_app_name: ${{ secrets.BACKEND_WEB_APP_NAME }}
-          TF_VAR_cosmos_db_account_name: ${{ secrets.COSMOS_DB_ACCOUNT_NAME }}
-          TF_VAR_keyvault_name: ${{ secrets.KEYVAULT_NAME }}
-          TF_VAR_storage_account_name: ${{ secrets.STORAGE_ACCOUNT_NAME }}
-          TF_VAR_openai_account_name: ${{ secrets.OPENAI_ACCOUNT_NAME }}
-          TF_VAR_openai_custom_subdomain_name: ${{ secrets.OPENAI_CUSTOM_SUBDOMAIN_NAME }}
           TF_VAR_auth_token_secret: ${{ secrets.AUTH_TOKEN_SECRET }}
 
       - name: Terraform Apply

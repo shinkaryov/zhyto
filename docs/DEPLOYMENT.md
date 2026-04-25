@@ -23,7 +23,6 @@ Core Azure:
 - `AZURE_CREDENTIALS`
 - `AZURE_SUBSCRIPTION_ID`
 - `AZURE_TENANT_ID`
-- `AZURE_RESOURCE_GROUP`
 
 Terraform backend state:
 - `TFSTATE_RESOURCE_GROUP`
@@ -31,22 +30,21 @@ Terraform backend state:
 - `TFSTATE_CONTAINER`
 - `TFSTATE_KEY`
 
-Infra naming/config:
-- `ACR_NAME`
-- `BACKEND_WEB_APP_NAME`
-- `COSMOS_DB_ACCOUNT_NAME`
-- `KEYVAULT_NAME`
-- `STORAGE_ACCOUNT_NAME`
-- `OPENAI_ACCOUNT_NAME`
-- `OPENAI_CUSTOM_SUBDOMAIN_NAME`
+App secret:
 - `AUTH_TOKEN_SECRET`
-- `AUTH_WHITELIST_BLOB_NAME` (optional, defaults to `email_whitelist.txt`)
 
-Data restore:
-- `CHROMA_SHARE_NAME`
+## Non-Sensitive Naming In Code
 
-Optional frontend override:
-- `FRONTEND_API_BASE_URL`
+Resource names and non-sensitive settings are defined directly in workflow/Terraform code:
+- Resource Group: `rg-zhyto-ukrinvest`
+- ACR: `acrzhytoukrinvest` (Azure naming constraint: no hyphens)
+- Web App: `app-zhyto-ukrinvest`
+- App Service Plan: `asp-zhyto-ukrinvest`
+- Cosmos DB account: `cosmos-zhyto-ukrinvest`
+- Key Vault: `kv-zhyto-ukrinvest`
+- Storage Account: `sazhytoukrinvest` (Azure naming constraint: no hyphens)
+- OpenAI account/subdomain: `oaizhytoukrinvest` (Azure naming constraint: no hyphens)
+- Chroma file share: `chroma-zhyto-ukrinvest`
 
 ## Permissions Needed for CI Identity
 
@@ -70,7 +68,7 @@ No data ingestion/embedding is run.
 
 `app-deploy.yml` downloads `src/auth/email_whitelist.txt` from Blob container `raw-data` before backend image build.
 
-Default blob name is `email_whitelist.txt`, or override with `AUTH_WHITELIST_BLOB_NAME`.
+Default blob name in workflow is `email_whitelist.txt`.
 
 ## Rollback Basics
 

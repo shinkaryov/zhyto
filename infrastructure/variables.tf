@@ -38,7 +38,7 @@ variable "environment" {
 variable "resource_group_name" {
   description = "Name of the resource group"
   type        = string
-  default     = "rg-ukraine-invest"
+  default     = "rg-zhyto-ukrinvest"
 }
 
 # ============================================================
@@ -48,6 +48,7 @@ variable "resource_group_name" {
 variable "container_registry_name" {
   description = "Name of the container registry (must be globally unique)"
   type        = string
+  default     = "acrzhytoukrinvest"
   validation {
     condition     = can(regex("^[a-z0-9]+$", var.container_registry_name))
     error_message = "Container registry name must contain only lowercase letters and numbers."
@@ -77,6 +78,7 @@ variable "acr_admin_enabled" {
 variable "web_app_name" {
   description = "Name of the backend web app (must be globally unique)"
   type        = string
+  default     = "app-zhyto-ukrinvest"
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.web_app_name))
     error_message = "Web app name must contain only lowercase letters, numbers, and hyphens."
@@ -86,7 +88,7 @@ variable "web_app_name" {
 variable "app_service_plan_name" {
   description = "Name of the app service plan"
   type        = string
-  default     = "asp-ukraine-invest"
+  default     = "asp-zhyto-ukrinvest"
 }
 
 variable "app_service_plan_sku" {
@@ -132,6 +134,7 @@ variable "chroma_mount_path" {
 variable "cosmos_db_account_name" {
   description = "Name of the Cosmos DB account (must be globally unique)"
   type        = string
+  default     = "cosmos-zhyto-ukrinvest"
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.cosmos_db_account_name))
     error_message = "Cosmos DB account name must contain only lowercase letters, numbers, and hyphens."
@@ -145,6 +148,7 @@ variable "cosmos_db_account_name" {
 variable "keyvault_name" {
   description = "Name of the Key Vault (must be globally unique)"
   type        = string
+  default     = "kv-zhyto-ukrinvest"
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.keyvault_name))
     error_message = "Key Vault name must contain only lowercase letters, numbers, and hyphens."
@@ -158,6 +162,7 @@ variable "keyvault_name" {
 variable "openai_account_name" {
   description = "Azure OpenAI account name (must be globally unique)"
   type        = string
+  default     = "oaizhytoukrinvest"
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.openai_account_name))
     error_message = "OpenAI account name must contain only lowercase letters, numbers, and hyphens."
@@ -167,6 +172,7 @@ variable "openai_account_name" {
 variable "openai_custom_subdomain_name" {
   description = "Azure OpenAI custom subdomain used by SDK endpoint"
   type        = string
+  default     = "oaizhytoukrinvest"
 }
 
 variable "openai_account_sku_name" {
@@ -284,6 +290,7 @@ variable "openai_embedding_deployment_sku_capacity" {
 variable "storage_account_name" {
   description = "Name of the storage account (must be globally unique, lowercase alnum)"
   type        = string
+  default     = "sazhytoukrinvest"
   validation {
     condition     = can(regex("^[a-z0-9]+$", var.storage_account_name))
     error_message = "Storage account name must contain only lowercase letters and numbers."
@@ -293,7 +300,7 @@ variable "storage_account_name" {
 variable "chroma_share_name" {
   description = "Azure Files share name for persistent Chroma index"
   type        = string
-  default     = "chroma"
+  default     = "chroma-zhyto-ukrinvest"
 }
 
 variable "chroma_share_quota_gb" {

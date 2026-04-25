@@ -9,16 +9,16 @@ azure_location        = "polandcentral"
 
 environment = "prod"
 
-resource_group_name = "rg-ukraine-invest"
+resource_group_name = "rg-zhyto-ukrinvest"
 
 # ACR must be globally unique
-container_registry_name = "ukraineinvestacr123"
+container_registry_name = "acrzhytoukrinvest"
 acr_sku                 = "Basic"
 acr_admin_enabled       = false
 
 # Backend Web App must be globally unique
-web_app_name          = "ukraine-invest-backend-123"
-app_service_plan_name = "asp-ukraine-invest"
+web_app_name          = "app-zhyto-ukrinvest"
+app_service_plan_name = "asp-zhyto-ukrinvest"
 app_service_plan_sku  = "B1"
 
 container_image_name = "ukraine-invest-backend"
@@ -29,14 +29,14 @@ backend_always_on         = false
 chroma_mount_path         = "/mounts/chroma"
 
 # Cosmos DB must be globally unique
-cosmos_db_account_name = "ukraineinvestcosmos123"
+cosmos_db_account_name = "cosmos-zhyto-ukrinvest"
 
 # Key Vault must be globally unique
-keyvault_name = "kv-ukraine-invest-123"
+keyvault_name = "kv-zhyto-ukrinvest"
 
 # Azure OpenAI account + deployments
-openai_account_name          = "oai-ukrinvest-123"
-openai_custom_subdomain_name = "oai-ukrinvest-123"
+openai_account_name          = "oaizhytoukrinvest"
+openai_custom_subdomain_name = "oaizhytoukrinvest"
 openai_account_sku_name      = "S0"
 
 openai_default_deployment_name       = "gpt-5-4-mini"
@@ -59,8 +59,8 @@ openai_embedding_deployment_sku_name   = "Standard"
 openai_embedding_deployment_sku_capacity = 1
 
 # Storage account must be globally unique (no special chars)
-storage_account_name  = "ukraineinvestsa123"
-chroma_share_name     = "chroma"
+storage_account_name  = "sazhytoukrinvest"
+chroma_share_name     = "chroma-zhyto-ukrinvest"
 chroma_share_quota_gb = 100
 
 # App auth config
