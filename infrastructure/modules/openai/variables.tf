@@ -48,7 +48,7 @@ variable "default_model_version" {
 variable "default_deployment_sku_name" {
   description = "SKU name for default chat deployment"
   type        = string
-  default     = "Standard"
+  default     = "GlobalStandard"
 }
 
 variable "default_deployment_sku_capacity" {
@@ -81,7 +81,7 @@ variable "advanced_model_version" {
 variable "advanced_deployment_sku_name" {
   description = "SKU name for advanced chat deployment"
   type        = string
-  default     = "Standard"
+  default     = "GlobalStandard"
 }
 
 variable "advanced_deployment_sku_capacity" {
@@ -108,7 +108,7 @@ variable "embedding_model_version" {
 variable "embedding_deployment_sku_name" {
   description = "SKU name for embedding deployment"
   type        = string
-  default     = "Standard"
+  default     = "GlobalStandard"
 }
 
 variable "embedding_deployment_sku_capacity" {

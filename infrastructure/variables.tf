@@ -208,7 +208,7 @@ variable "openai_default_model_version" {
 variable "openai_default_deployment_sku_name" {
   description = "Default chat deployment SKU name"
   type        = string
-  default     = "Standard"
+  default     = "GlobalStandard"
 }
 
 variable "openai_default_deployment_sku_capacity" {
@@ -244,7 +244,7 @@ variable "openai_advanced_model_version" {
 variable "openai_advanced_deployment_sku_name" {
   description = "Advanced chat deployment SKU name"
   type        = string
-  default     = "Standard"
+  default     = "GlobalStandard"
 }
 
 variable "openai_advanced_deployment_sku_capacity" {
@@ -274,7 +274,7 @@ variable "openai_embedding_model_version" {
 variable "openai_embedding_deployment_sku_name" {
   description = "Embedding deployment SKU name"
   type        = string
-  default     = "Standard"
+  default     = "GlobalStandard"
 }
 
 variable "openai_embedding_deployment_sku_capacity" {
