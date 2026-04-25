@@ -98,6 +98,7 @@ jobs:
           az storage file upload-batch \
             --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
             --auth-mode login \
+            --enable-file-backup-request-intent \
             --source "$SOURCE_DIR" \
             --destination "${{ env.CHROMA_SHARE_NAME }}"
 
