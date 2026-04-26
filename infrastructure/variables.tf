@@ -226,13 +226,13 @@ variable "openai_enable_advanced_deployment" {
 variable "openai_advanced_deployment_name" {
   description = "Advanced chat deployment name"
   type        = string
-  default     = "gpt-5-4-pro"
+  default     = "gpt-5-4-advanced"
 }
 
 variable "openai_advanced_model_name" {
   description = "Advanced chat model name"
   type        = string
-  default     = "gpt-5.4-pro"
+  default     = "gpt-5.4"
 }
 
 variable "openai_advanced_model_version" {

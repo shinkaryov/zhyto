@@ -46,8 +46,8 @@ openai_default_deployment_sku_name   = "GlobalStandard"
 openai_default_deployment_sku_capacity = 1
 
 openai_enable_advanced_deployment      = true
-openai_advanced_deployment_name        = "gpt-5-4-pro"
-openai_advanced_model_name             = "gpt-5.4-pro"
+openai_advanced_deployment_name        = "gpt-5-4-advanced"
+openai_advanced_model_name             = "gpt-5.4"
 openai_advanced_model_version          = "2026-03-05"
 openai_advanced_deployment_sku_name    = "GlobalStandard"
 openai_advanced_deployment_sku_capacity = 1
