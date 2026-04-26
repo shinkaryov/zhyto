@@ -266,7 +266,8 @@ module "web_app" {
     "AZURE_OPENAI_DEFAULT_DEPLOYMENT"        = module.openai.default_deployment_name
     "AZURE_OPENAI_ADVANCED_DEPLOYMENT"       = module.openai.advanced_deployment_name
     "AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME" = module.openai.embedding_deployment_name
-    "COSMOS_DB_CONNECTION_STRING"            = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.cosmos_connection_string.versionless_id})"    "CHROMA_DB_PATH"                         = var.chroma_mount_path
+    "COSMOS_DB_CONNECTION_STRING"            = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.cosmos_connection_string.versionless_id})"
+    "CHROMA_DB_PATH"                         = var.chroma_mount_path
     "CHROMA_PERSIST_DIR"                     = var.chroma_mount_path
     "ENTRA_REDIRECT_URI"                     = var.entra_redirect_uri
     "AUTH_TOKEN_SECRET"                      = var.auth_token_secret
