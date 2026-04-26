@@ -261,12 +261,12 @@ module "web_app" {
     "FEATURE_COSMOS_DB_ENABLED"              = "true"
     "FAIL_OPEN_TO_MOCK_IN_PRODUCTION"        = "false"
     "AZURE_OPENAI_ENDPOINT"                  = module.openai.endpoint
-    "AZURE_OPENAI_API_KEY"                   = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.openai_api_key.id})"
+    "AZURE_OPENAI_API_KEY"                   = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.openai_api_key})"
     "AZURE_OPENAI_DEPLOYMENT_NAME"           = module.openai.default_deployment_name
     "AZURE_OPENAI_DEFAULT_DEPLOYMENT"        = module.openai.default_deployment_name
     "AZURE_OPENAI_ADVANCED_DEPLOYMENT"       = module.openai.advanced_deployment_name
     "AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME" = module.openai.embedding_deployment_name
-    "COSMOS_DB_CONNECTION_STRING"            = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.cosmos_connection_string.id})"
+    "COSMOS_DB_CONNECTION_STRING"            = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.cosmos_connection_string})"
     "CHROMA_DB_PATH"                         = var.chroma_mount_path
     "CHROMA_PERSIST_DIR"                     = var.chroma_mount_path
     "ENTRA_REDIRECT_URI"                     = var.entra_redirect_uri
