@@ -678,9 +678,9 @@ class AnalyticalChatPipeline:
                 continue
             if excluded_keywords and any(k in window for k in excluded_keywords):
                 continue
-            currency = cls._extract_currency_code(amount_token) or cls._extract_currency_code(
-                window
-            )
+            currency = cls._extract_currency_code(
+                amount_token
+            ) or cls._extract_currency_code(window)
             return amount, currency
         return None, None
 
@@ -708,7 +708,13 @@ class AnalyticalChatPipeline:
             window = (text or "")[window_start:window_end].lower()
             if any(
                 token in window
-                for token in ("просад", "drawdown", "max drawdown", "ризик", "volatility")
+                for token in (
+                    "просад",
+                    "drawdown",
+                    "max drawdown",
+                    "ризик",
+                    "volatility",
+                )
             ):
                 return max(min(pct, 100.0), 0.0)
         return None
@@ -901,9 +907,11 @@ class AnalyticalChatPipeline:
         )
         horizon_years = self._extract_horizon_years(corpus)
         max_drawdown_pct = self._extract_max_drawdown_percent(corpus)
-        current_portfolio_value, portfolio_currency = self._resolve_current_portfolio_value(
-            user_portfolio=user_portfolio,
-            portfolio_totals=portfolio_totals,
+        current_portfolio_value, portfolio_currency = (
+            self._resolve_current_portfolio_value(
+                user_portfolio=user_portfolio,
+                portfolio_totals=portfolio_totals,
+            )
         )
         planning_currency = (
             target_currency
@@ -1032,7 +1040,9 @@ class AnalyticalChatPipeline:
                 "Future portfolio value scenarios (lump sum + monthly contributions):"
             )
             for label, _, fv_total in future_value_rows:
-                lines.append(f"- {label}: {self._format_money(fv_total, planning_currency)}")
+                lines.append(
+                    f"- {label}: {self._format_money(fv_total, planning_currency)}"
+                )
 
         lines.append("Current allocation snapshot by class:")
         lines.append(

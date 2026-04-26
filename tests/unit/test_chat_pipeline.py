@@ -505,7 +505,9 @@ class TestAnalyticalChatPipeline:
         assert advisor_call is not None
         assert advisor_call["kwargs"].get("max_tokens") >= 1400
 
-    def test_passive_income_goal_prompt_contains_required_capital_and_reality_check(self):
+    def test_passive_income_goal_prompt_contains_required_capital_and_reality_check(
+        self,
+    ):
         retriever = DummyRetriever([])
         generator = DummyGenerator()
         pipeline = AnalyticalChatPipeline(retriever=retriever, generator=generator)
@@ -543,8 +545,12 @@ class TestAnalyticalChatPipeline:
         assert "Target looks hard to reach" in prompt
         assert "Recommended allocation ranges" in prompt
 
-    def test_concrete_buy_question_uses_allocation_ranges_not_single_ticker_command(self):
-        pipeline = AnalyticalChatPipeline(retriever=DummyRetriever([]), generator=DummyGenerator())
+    def test_concrete_buy_question_uses_allocation_ranges_not_single_ticker_command(
+        self,
+    ):
+        pipeline = AnalyticalChatPipeline(
+            retriever=DummyRetriever([]), generator=DummyGenerator()
+        )
         brief, meta = pipeline._build_financial_planning_brief(
             question="Що конкретно купити для портфеля?",
             history=[],
@@ -563,7 +569,9 @@ class TestAnalyticalChatPipeline:
         assert "buy SPY and OVDP" not in brief
 
     def test_asset_class_guidance_includes_purpose_ranges_and_risks(self):
-        pipeline = AnalyticalChatPipeline(retriever=DummyRetriever([]), generator=DummyGenerator())
+        pipeline = AnalyticalChatPipeline(
+            retriever=DummyRetriever([]), generator=DummyGenerator()
+        )
         brief, _ = pipeline._build_financial_planning_brief(
             question="Які класи активів розглянути?",
             history=[],
@@ -574,7 +582,9 @@ class TestAnalyticalChatPipeline:
             language="uk",
         )
 
-        assert "Growth core:" in brief and "purpose=growth" in brief and "risk=" in brief
+        assert (
+            "Growth core:" in brief and "purpose=growth" in brief and "risk=" in brief
+        )
         assert (
             "Defensive/income:" in brief
             and "purpose=stability + income" in brief
@@ -583,7 +593,9 @@ class TestAnalyticalChatPipeline:
         assert "Real assets/REITs:" in brief and "risk=" in brief
 
     def test_drawdown_20_profile_limits_equity_range(self):
-        pipeline = AnalyticalChatPipeline(retriever=DummyRetriever([]), generator=DummyGenerator())
+        pipeline = AnalyticalChatPipeline(
+            retriever=DummyRetriever([]), generator=DummyGenerator()
+        )
         brief, _ = pipeline._build_financial_planning_brief(
             question="План на 10 років, просадка до 20%, що мені купити?",
             history=[],
@@ -599,7 +611,9 @@ class TestAnalyticalChatPipeline:
         assert "Growth core: 90-100%" not in brief
 
     def test_passive_income_plan_brief_separates_three_phases(self):
-        pipeline = AnalyticalChatPipeline(retriever=DummyRetriever([]), generator=DummyGenerator())
+        pipeline = AnalyticalChatPipeline(
+            retriever=DummyRetriever([]), generator=DummyGenerator()
+        )
         brief, _ = pipeline._build_financial_planning_brief(
             question="Хочу пасивний дохід через 10 років. Внесок $1000/міс.",
             history=[],

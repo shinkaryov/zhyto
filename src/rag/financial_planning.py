@@ -25,7 +25,9 @@ def required_capital(annual_income: float, yield_rate: float) -> float:
     return normalized_income / normalized_rate
 
 
-def future_value_lump_sum(current_value: float, annual_return: float, years: float) -> float:
+def future_value_lump_sum(
+    current_value: float, annual_return: float, years: float
+) -> float:
     """Future value of an existing lump sum."""
     principal = max(float(current_value or 0.0), 0.0)
     rate = float(annual_return or 0.0)
@@ -88,7 +90,15 @@ def _classify_asset_class(asset: dict[str, Any]) -> str:
         return "liquidity_cash"
     if any(
         token in blob
-        for token in ("ovdp", "облігац", "bond", "депозит", "t-bill", "treasury", "bill")
+        for token in (
+            "ovdp",
+            "облігац",
+            "bond",
+            "депозит",
+            "t-bill",
+            "treasury",
+            "bill",
+        )
     ):
         return "defensive_income"
     if any(
@@ -130,7 +140,9 @@ def _pick_value_field(portfolio: list[dict[str, Any]]) -> tuple[str, float]:
     return best_field, best_sum
 
 
-def portfolio_allocation_by_asset_class(portfolio: list[dict[str, Any]]) -> dict[str, Any]:
+def portfolio_allocation_by_asset_class(
+    portfolio: list[dict[str, Any]],
+) -> dict[str, Any]:
     """
     Build an allocation snapshot from a portfolio list.
 
