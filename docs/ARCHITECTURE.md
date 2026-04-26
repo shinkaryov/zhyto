@@ -55,6 +55,7 @@ Infrastructure is managed by Terraform in [`infrastructure/`](/Users/admin/Pycha
 - Azure Cosmos DB (serverless)
 - Azure OpenAI / Foundry OpenAI account + deployments
 - Key Vault (secret storage / references)
+- Log Analytics workspace + App Service diagnostic settings (console/http/metrics)
 - Managed Identity + AcrPull + Key Vault secret read permissions
 
 ## Chroma Strategy (No Re-Embedding)
@@ -73,6 +74,7 @@ This keeps runtime simple and cheap for low traffic.
 - Cosmos stays **serverless** by design.
 - Single region deployment in Poland Central.
 - No provisioned RU/autoscale mode.
+- Production runtime is configured to avoid silent fallback to local mock DB when Cosmos is unavailable.
 
 ## Caching Strategy
 

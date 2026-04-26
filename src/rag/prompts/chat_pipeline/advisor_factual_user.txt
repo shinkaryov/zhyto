@@ -9,3 +9,6 @@ $analyst_artifact
 
 Synthesized Evidence:
 $evidence_pack
+
+Deterministic Financial Planning Brief:
+$financial_planning_brief

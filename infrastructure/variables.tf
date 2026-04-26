@@ -112,13 +112,13 @@ variable "container_image_tag" {
 variable "backend_health_check_path" {
   description = "Health check path for backend app"
   type        = string
-  default     = "/health"
+  default     = "/health/ready"
 }
 
 variable "backend_always_on" {
   description = "Enable always-on for backend app service"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "chroma_mount_path" {
@@ -307,6 +307,18 @@ variable "chroma_share_quota_gb" {
   description = "Azure Files share quota in GB for Chroma persistence"
   type        = number
   default     = 100
+}
+
+variable "log_analytics_workspace_name" {
+  description = "Log Analytics workspace name for centralized app logs"
+  type        = string
+  default     = "log-zhyto-ukrinvest"
+}
+
+variable "log_analytics_retention_days" {
+  description = "Retention in days for Log Analytics workspace data"
+  type        = number
+  default     = 30
 }
 
 variable "extra_storage_data_principal_object_ids" {

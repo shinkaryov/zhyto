@@ -29,6 +29,13 @@ from src.rag.chat_types import (
     ROUTING_INTENT_PURE_LIVE_PRICE,
     ScoredChunk,
 )
+from src.rag.financial_planning import (
+    annual_income_target,
+    future_value_lump_sum,
+    future_value_monthly_contributions,
+    portfolio_allocation_by_asset_class,
+    required_capital,
+)
 from src.rag.guardrails import (
     build_scope_refusal,
     detect_scope_violation,
@@ -100,6 +107,42 @@ class AnalyticalChatPipeline:
     TOKENS_ADVISOR_COMPRESSED = 1400
     TOKENS_LIVE_PRICE = 280
     TOKENS_PORTFOLIO_DRAFT = 420
+    _PLANNING_KEYWORDS = (
+        "пасивн",
+        "passive income",
+        "financial plan",
+        "фінансов",
+        "allocation",
+        "алокац",
+        "ребаланс",
+        "rebalanc",
+        "what should i buy",
+        "що купити",
+        "що конкретно купити",
+        "що мені купити",
+        "купити",
+        "buy",
+        "класи активів",
+        "asset class",
+        "диверсиф",
+        "портфель",
+        "portfolio",
+    )
+    _PASSIVE_INCOME_KEYWORDS = (
+        "пасивн",
+        "passive income",
+        "дохід",
+        "income target",
+        "cash flow",
+    )
+    _CONTRIBUTION_KEYWORDS = (
+        "внесок",
+        "вклад",
+        "contribution",
+        "invest per month",
+        "щомісяч",
+        "monthly",
+    )
 
     def __init__(self, retriever: Any, generator: Any):
         self.retriever = retriever
@@ -550,6 +593,527 @@ class AnalyticalChatPipeline:
             )
         )
         return short_followup and has_disambiguation_keyword
+
+    @staticmethod
+    def _recent_user_messages(history: list[dict[str, Any]], limit: int = 6) -> str:
+        user_messages: list[str] = []
+        for item in history:
+            if str(item.get("role") or "").strip().lower() != "user":
+                continue
+            content = item.get("content")
+            if isinstance(content, str) and content.strip():
+                user_messages.append(content.strip())
+        return "\n".join(user_messages[-limit:])
+
+    @classmethod
+    def _is_goal_based_planning_request(
+        cls, *, question: str, routing_intent: str
+    ) -> bool:
+        normalized = _normalize_text(question)
+        has_planning_language = any(
+            keyword in normalized for keyword in cls._PLANNING_KEYWORDS
+        )
+        return has_planning_language and routing_intent in {
+            ROUTING_INTENT_FACTUAL_RAG,
+            ROUTING_INTENT_ANALYTICAL_RAG,
+            ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE,
+        }
+
+    @classmethod
+    def _is_passive_income_goal_request(cls, text: str) -> bool:
+        normalized = _normalize_text(text)
+        return any(keyword in normalized for keyword in cls._PASSIVE_INCOME_KEYWORDS)
+
+    @staticmethod
+    def _parse_numeric_token(token: str) -> Optional[float]:
+        raw = re.sub(r"[^\d,.\s]", "", str(token or "")).strip()
+        if not raw:
+            return None
+        compact = raw.replace(" ", "")
+        if "," in compact and "." in compact:
+            compact = compact.replace(",", "")
+        elif "," in compact:
+            head, tail = compact.rsplit(",", 1)
+            if len(tail) == 3:
+                compact = head + tail
+            else:
+                compact = head + "." + tail
+        try:
+            return float(compact)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _extract_currency_code(text: str) -> Optional[str]:
+        lowered = str(text or "").lower()
+        if "$" in lowered or any(token in lowered for token in ("usd", "дол", "бакс")):
+            return "USD"
+        if "€" in lowered or "eur" in lowered:
+            return "EUR"
+        if "₴" in lowered or any(token in lowered for token in ("uah", "грн")):
+            return "UAH"
+        return None
+
+    @classmethod
+    def _extract_monthly_amount(
+        cls,
+        *,
+        text: str,
+        required_keywords: tuple[str, ...],
+        excluded_keywords: tuple[str, ...] = (),
+    ) -> tuple[Optional[float], Optional[str]]:
+        monthly_pattern = re.compile(
+            r"(?P<amount>[€$₴]?\s*\d[\d\s,\.]*)\s*(?:/|\bза\b)?\s*(?:місяц\w*|міс|month|mo)\b",
+            flags=re.IGNORECASE,
+        )
+        for match in monthly_pattern.finditer(text or ""):
+            amount_token = match.group("amount")
+            amount = cls._parse_numeric_token(amount_token)
+            if amount is None or amount <= 0:
+                continue
+            window_start = max(0, match.start() - 24)
+            window_end = min(len(text or ""), match.end() + 24)
+            window = (text or "")[window_start:window_end].lower()
+            if required_keywords and not any(k in window for k in required_keywords):
+                continue
+            if excluded_keywords and any(k in window for k in excluded_keywords):
+                continue
+            currency = cls._extract_currency_code(amount_token) or cls._extract_currency_code(
+                window
+            )
+            return amount, currency
+        return None, None
+
+    @classmethod
+    def _extract_horizon_years(cls, text: str) -> Optional[float]:
+        horizon_pattern = re.compile(
+            r"(\d+(?:[.,]\d+)?)\s*(?:рок\w*|year\w*|yr\w*)", flags=re.IGNORECASE
+        )
+        for match in horizon_pattern.finditer(text or ""):
+            value = cls._parse_numeric_token(match.group(1))
+            if value is None:
+                continue
+            if 0 < value <= 80:
+                return value
+        return None
+
+    @classmethod
+    def _extract_max_drawdown_percent(cls, text: str) -> Optional[float]:
+        for match in re.finditer(r"(\d+(?:[.,]\d+)?)\s*%", text or ""):
+            pct = cls._parse_numeric_token(match.group(1))
+            if pct is None:
+                continue
+            window_start = max(0, match.start() - 45)
+            window_end = min(len(text or ""), match.end() + 45)
+            window = (text or "")[window_start:window_end].lower()
+            if any(
+                token in window
+                for token in ("просад", "drawdown", "max drawdown", "ризик", "volatility")
+            ):
+                return max(min(pct, 100.0), 0.0)
+        return None
+
+    @staticmethod
+    def _format_money(amount: Optional[float], currency: str) -> str:
+        if amount is None:
+            return "N/A"
+        symbols = {"USD": "$", "EUR": "€", "UAH": "₴"}
+        symbol = symbols.get(currency.upper(), currency.upper() + " ")
+        return f"{symbol}{amount:,.0f}"
+
+    @staticmethod
+    def _resolve_current_portfolio_value(
+        *,
+        user_portfolio: list[dict[str, Any]],
+        portfolio_totals: Optional[dict[str, Any]],
+    ) -> tuple[Optional[float], Optional[str]]:
+        totals = portfolio_totals or {}
+        for key, currency in (("usd", "USD"), ("uah", "UAH"), ("eur", "EUR")):
+            value = _safe_float(totals.get(key), 0.0)
+            if value > 0:
+                return value, currency
+
+        allocation_snapshot = portfolio_allocation_by_asset_class(user_portfolio)
+        total_value = _safe_float(allocation_snapshot.get("total_value"), 0.0)
+        value_field = str(allocation_snapshot.get("value_field") or "")
+        inferred_currency = None
+        if value_field.endswith("_usd"):
+            inferred_currency = "USD"
+        elif value_field.endswith("_uah"):
+            inferred_currency = "UAH"
+        elif value_field.endswith("_eur"):
+            inferred_currency = "EUR"
+        if total_value > 0:
+            return total_value, inferred_currency
+        return None, inferred_currency
+
+    @staticmethod
+    def _allocation_ranges_for_profile(
+        *,
+        horizon_years: Optional[float],
+        max_drawdown_pct: Optional[float],
+        passive_income_goal: bool,
+    ) -> dict[str, tuple[int, int]]:
+        if max_drawdown_pct is not None and max_drawdown_pct <= 20:
+            ranges = {
+                "growth_core": (45, 55),
+                "defensive_income": (25, 35),
+                "real_assets": (5, 15),
+                "liquidity_cash": (5, 10),
+                "high_risk": (0, 5),
+            }
+        elif max_drawdown_pct is not None and max_drawdown_pct <= 30:
+            ranges = {
+                "growth_core": (50, 65),
+                "defensive_income": (20, 30),
+                "real_assets": (5, 15),
+                "liquidity_cash": (5, 10),
+                "high_risk": (0, 10),
+            }
+        else:
+            ranges = {
+                "growth_core": (55, 70),
+                "defensive_income": (15, 25),
+                "real_assets": (5, 12),
+                "liquidity_cash": (3, 8),
+                "high_risk": (0, 12),
+            }
+
+        if horizon_years is not None and horizon_years < 7:
+            ranges["growth_core"] = (
+                max(ranges["growth_core"][0] - 5, 35),
+                max(ranges["growth_core"][1] - 5, 45),
+            )
+            ranges["defensive_income"] = (
+                min(ranges["defensive_income"][0] + 5, 40),
+                min(ranges["defensive_income"][1] + 5, 50),
+            )
+
+        if passive_income_goal:
+            ranges["defensive_income"] = (
+                min(ranges["defensive_income"][0] + 3, 45),
+                min(ranges["defensive_income"][1] + 5, 55),
+            )
+            ranges["high_risk"] = (
+                ranges["high_risk"][0],
+                min(ranges["high_risk"][1], 10),
+            )
+        return ranges
+
+    @staticmethod
+    def _select_single_missing_question(
+        *,
+        missing_fields: list[str],
+        passive_income_goal: bool,
+        language: str,
+    ) -> str:
+        order = (
+            ["target_passive_income_monthly", "horizon_years", "monthly_contribution"]
+            if passive_income_goal
+            else ["horizon_years", "max_drawdown_pct", "monthly_contribution"]
+        )
+        for field in order:
+            if field not in missing_fields:
+                continue
+            if field == "target_passive_income_monthly":
+                return (
+                    "Яку ціль пасивного доходу на місяць ви хочете (сума + валюта)?"
+                    if language == "uk"
+                    else "What monthly passive-income target do you want (amount + currency)?"
+                )
+            if field == "horizon_years":
+                return (
+                    "Який у вас горизонт плану в роках?"
+                    if language == "uk"
+                    else "What is your planning horizon in years?"
+                )
+            if field == "monthly_contribution":
+                return (
+                    "Який щомісячний внесок ви реально можете тримати стабільно?"
+                    if language == "uk"
+                    else "What monthly contribution can you realistically keep stable?"
+                )
+            if field == "max_drawdown_pct":
+                return (
+                    "Яку максимальну просадку портфеля ви готові приймати (% від піку)?"
+                    if language == "uk"
+                    else "What maximum drawdown are you comfortable with (% from peak)?"
+                )
+            if field == "current_portfolio_value":
+                return (
+                    "Яка поточна вартість вашого портфеля (сума + валюта)?"
+                    if language == "uk"
+                    else "What is your current portfolio value (amount + currency)?"
+                )
+        return (
+            "Уточніть, будь ласка, один ключовий параметр цілі (сума/горизонт/ризик)."
+            if language == "uk"
+            else "Please clarify one key planning input (target/horizon/risk)."
+        )
+
+    def _build_financial_planning_brief(
+        self,
+        *,
+        question: str,
+        history: list[dict[str, Any]],
+        user_notes: list[dict[str, Any]],
+        user_portfolio: list[dict[str, Any]],
+        portfolio_totals: Optional[dict[str, Any]],
+        routing_intent: str,
+        language: str,
+    ) -> tuple[str, dict[str, Any]]:
+        planning_mode = self._is_goal_based_planning_request(
+            question=question,
+            routing_intent=routing_intent,
+        )
+        if not planning_mode:
+            return (
+                "PLANNING MODE: OFF (user asked primarily factual or non-planning query).",
+                {
+                    "planning_mode": False,
+                    "passive_income_goal": False,
+                    "missing_fields": [],
+                },
+            )
+
+        notes_text = "\n".join(
+            str(note.get("content") or "").strip()
+            for note in user_notes[:20]
+            if str(note.get("content") or "").strip()
+        )
+        corpus = "\n".join(
+            [
+                question or "",
+                self._recent_user_messages(history),
+                notes_text,
+            ]
+        )
+        passive_income_goal = self._is_passive_income_goal_request(corpus)
+
+        monthly_income_target, target_currency = self._extract_monthly_amount(
+            text=corpus,
+            required_keywords=self._PASSIVE_INCOME_KEYWORDS,
+            excluded_keywords=self._CONTRIBUTION_KEYWORDS,
+        )
+        monthly_contribution, contribution_currency = self._extract_monthly_amount(
+            text=corpus,
+            required_keywords=self._CONTRIBUTION_KEYWORDS,
+        )
+        horizon_years = self._extract_horizon_years(corpus)
+        max_drawdown_pct = self._extract_max_drawdown_percent(corpus)
+        current_portfolio_value, portfolio_currency = self._resolve_current_portfolio_value(
+            user_portfolio=user_portfolio,
+            portfolio_totals=portfolio_totals,
+        )
+        planning_currency = (
+            target_currency
+            or contribution_currency
+            or portfolio_currency
+            or self._extract_currency_code(corpus)
+            or "USD"
+        )
+        allocation_snapshot = portfolio_allocation_by_asset_class(user_portfolio)
+        current_allocation = allocation_snapshot.get("allocation", {})
+
+        required_capital_rows: list[tuple[str, float, float]] = []
+        annual_target_income: Optional[float] = None
+        if monthly_income_target is not None and monthly_income_target > 0:
+            annual_target_income = annual_income_target(monthly_income_target)
+            for label, rate in (
+                ("Conservative 3%", 0.03),
+                ("Moderate 4%", 0.04),
+                ("Higher risk 5%", 0.05),
+                ("Aggressive 6%", 0.06),
+            ):
+                required_capital_rows.append(
+                    (label, rate, required_capital(annual_target_income, rate))
+                )
+
+        future_value_rows: list[tuple[str, float, float]] = []
+        contribution_total: Optional[float] = None
+        if (
+            horizon_years is not None
+            and horizon_years > 0
+            and monthly_contribution is not None
+            and current_portfolio_value is not None
+        ):
+            contribution_total = monthly_contribution * 12.0 * horizon_years
+            for label, rate in (
+                ("Conservative 4%", 0.04),
+                ("Balanced 6%", 0.06),
+                ("Growth 8%", 0.08),
+                ("Aggressive 10%", 0.10),
+            ):
+                fv_total = future_value_lump_sum(
+                    current_portfolio_value, rate, horizon_years
+                ) + future_value_monthly_contributions(
+                    monthly_contribution, rate, horizon_years
+                )
+                future_value_rows.append((label, rate, fv_total))
+
+        missing_fields: list[str] = []
+        if passive_income_goal and monthly_income_target is None:
+            missing_fields.append("target_passive_income_monthly")
+        if horizon_years is None:
+            missing_fields.append("horizon_years")
+        if monthly_contribution is None:
+            missing_fields.append("monthly_contribution")
+        if max_drawdown_pct is None:
+            missing_fields.append("max_drawdown_pct")
+        if current_portfolio_value is None:
+            missing_fields.append("current_portfolio_value")
+
+        allocation_ranges = self._allocation_ranges_for_profile(
+            horizon_years=horizon_years,
+            max_drawdown_pct=max_drawdown_pct,
+            passive_income_goal=passive_income_goal,
+        )
+
+        reality_check_lines: list[str] = []
+        if required_capital_rows and future_value_rows:
+            conservative_required = required_capital_rows[0][2]
+            aggressive_required = required_capital_rows[-1][2]
+            fv_growth = future_value_rows[2][2]
+            if fv_growth < aggressive_required:
+                reality_check_lines.append(
+                    "Target looks hard to reach under current contribution pace; likely requires higher contributions, longer horizon, or a lower income goal."
+                )
+            elif fv_growth < conservative_required:
+                reality_check_lines.append(
+                    "Target may be possible only in stronger-return scenarios; conservative path still shows a capital gap."
+                )
+            else:
+                reality_check_lines.append(
+                    "Target is mathematically plausible across several scenarios, but still depends on market path and discipline."
+                )
+        elif passive_income_goal:
+            reality_check_lines.append(
+                "Passive-income target check is incomplete because one or more core inputs are missing."
+            )
+
+        if contribution_total is not None and horizon_years is not None:
+            reality_check_lines.append(
+                f"Raw contribution over horizon: {self._format_money(contribution_total, planning_currency)} before investment returns."
+            )
+
+        missing_question = (
+            self._select_single_missing_question(
+                missing_fields=missing_fields,
+                passive_income_goal=passive_income_goal,
+                language=language,
+            )
+            if missing_fields
+            else ""
+        )
+
+        lines: list[str] = [
+            "PLANNING MODE: ON",
+            f"Planning focus detected: {'passive_income' if passive_income_goal else 'allocation/advice'}",
+            f"Target passive income (monthly): {self._format_money(monthly_income_target, planning_currency) if monthly_income_target else 'N/A'}",
+            f"Target income currency: {planning_currency}",
+            f"Horizon (years): {horizon_years if horizon_years is not None else 'N/A'}",
+            f"Monthly contribution: {self._format_money(monthly_contribution, planning_currency) if monthly_contribution else 'N/A'}",
+            f"Max drawdown tolerance: {f'{max_drawdown_pct:.1f}%' if max_drawdown_pct is not None else 'N/A'}",
+            f"Current portfolio value: {self._format_money(current_portfolio_value, planning_currency) if current_portfolio_value else 'N/A'}",
+        ]
+
+        if annual_target_income is not None:
+            lines.append(
+                f"Annual target income: {self._format_money(annual_target_income, planning_currency)}"
+            )
+            lines.append("Required capital scenarios (planning only, not guaranteed):")
+            for label, _, capital_value in required_capital_rows:
+                lines.append(
+                    f"- {label}: {self._format_money(capital_value, planning_currency)}"
+                )
+
+        if future_value_rows:
+            lines.append(
+                "Future portfolio value scenarios (lump sum + monthly contributions):"
+            )
+            for label, _, fv_total in future_value_rows:
+                lines.append(f"- {label}: {self._format_money(fv_total, planning_currency)}")
+
+        lines.append("Current allocation snapshot by class:")
+        lines.append(
+            f"- Growth core: {current_allocation.get('growth_core', {}).get('weight_percent', 0.0)}%"
+        )
+        lines.append(
+            f"- Defensive/income: {current_allocation.get('defensive_income', {}).get('weight_percent', 0.0)}%"
+        )
+        lines.append(
+            f"- Real assets: {current_allocation.get('real_assets', {}).get('weight_percent', 0.0)}%"
+        )
+        lines.append(
+            f"- Liquidity/cash: {current_allocation.get('liquidity_cash', {}).get('weight_percent', 0.0)}%"
+        )
+        lines.append(
+            f"- High risk: {current_allocation.get('high_risk', {}).get('weight_percent', 0.0)}%"
+        )
+
+        lines.append("Recommended allocation ranges (not a single trade command):")
+        lines.append(
+            f"- Growth core: {allocation_ranges['growth_core'][0]}-{allocation_ranges['growth_core'][1]}% | purpose=growth | risk=20-40% drawdowns in equity-heavy periods"
+        )
+        lines.append(
+            f"- Defensive/income: {allocation_ranges['defensive_income'][0]}-{allocation_ranges['defensive_income'][1]}% | purpose=stability + income | risk=inflation/reinvestment/currency"
+        )
+        lines.append(
+            f"- Real assets/REITs: {allocation_ranges['real_assets'][0]}-{allocation_ranges['real_assets'][1]}% | purpose=real-asset diversification | risk=rates/leverage/liquidity"
+        )
+        lines.append(
+            f"- Liquidity/cash: {allocation_ranges['liquidity_cash'][0]}-{allocation_ranges['liquidity_cash'][1]}% | purpose=buffer + optionality | risk=inflation drag"
+        )
+        lines.append(
+            f"- Opportunistic/high-risk: {allocation_ranges['high_risk'][0]}-{allocation_ranges['high_risk'][1]}% | purpose=optional upside | risk=deep drawdowns"
+        )
+
+        lines.extend(
+            [
+                "Phase structure:",
+                "- Phase 1 (Accumulation): build diversified growth base and consistent contributions; avoid chasing yield too early.",
+                "- Phase 2 (Transition): gradually raise defensive/income sleeve and add buffer to reduce sequence risk.",
+                "- Phase 3 (Income): run sustainable withdrawal/yield mix from diversified income sources.",
+            ]
+        )
+
+        if reality_check_lines:
+            lines.append("Reality check:")
+            for item in reality_check_lines:
+                lines.append(f"- {item}")
+
+        if missing_fields:
+            lines.append(
+                "Missing critical planning inputs: " + ", ".join(missing_fields)
+            )
+            lines.append(
+                "If needed, ask exactly ONE minimal follow-up question before giving a full plan:"
+            )
+            lines.append(f"- {missing_question}")
+
+        lines.extend(
+            [
+                "Advisor behavior requirements:",
+                "- Use these deterministic numbers in the answer.",
+                "- Be direct if the goal is mathematically difficult with current constraints.",
+                "- Do not issue overconfident single-security buy/sell commands.",
+                "- Prefer staged rebalancing ranges over all-in actions.",
+            ]
+        )
+
+        planning_meta = {
+            "planning_mode": True,
+            "passive_income_goal": passive_income_goal,
+            "monthly_income_target": monthly_income_target,
+            "target_currency": planning_currency,
+            "horizon_years": horizon_years,
+            "monthly_contribution": monthly_contribution,
+            "max_drawdown_pct": max_drawdown_pct,
+            "current_portfolio_value": current_portfolio_value,
+            "missing_fields": missing_fields,
+            "single_missing_question": missing_question if missing_fields else "",
+        }
+        return "\n".join(lines), planning_meta
 
     def _generate_with_optional_metadata(
         self, **kwargs: Any
@@ -1228,6 +1792,7 @@ class AnalyticalChatPipeline:
         evidence_pack: EvidencePack,
         analyst_artifact: str,
         user_context: str,
+        financial_planning_brief: str,
         routing_intent: str,
         deployment: Optional[str],
     ) -> str:
@@ -1241,6 +1806,7 @@ class AnalyticalChatPipeline:
             user_context=user_context,
             analyst_artifact=analyst_artifact,
             evidence_pack=evidence_pack.to_prompt_text(),
+            financial_planning_brief=financial_planning_brief,
         )
 
         message, _ = self._generate_with_optional_metadata(
@@ -1262,6 +1828,7 @@ class AnalyticalChatPipeline:
         user_context: str,
         analyst_artifact: str,
         compressed_pack: dict[str, Any],
+        financial_planning_brief: str,
         routing_intent: str,
         deployment: Optional[str],
     ) -> str:
@@ -1285,6 +1852,7 @@ class AnalyticalChatPipeline:
             compressed_evidence_pack=self._compressed_pack_to_prompt_text(
                 compressed_pack
             ),
+            financial_planning_brief=financial_planning_brief,
         )
 
         message, _ = self._generate_with_optional_metadata(
@@ -1405,6 +1973,24 @@ class AnalyticalChatPipeline:
                 }
             return PipelineResult(message=refusal, sources=[], debug=debug_payload)
 
+        financial_planning_brief, financial_planning_meta = (
+            self._build_financial_planning_brief(
+                question=question,
+                history=history,
+                user_notes=user_notes,
+                user_portfolio=user_portfolio,
+                portfolio_totals=portfolio_totals,
+                routing_intent=routing_intent,
+                language=language,
+            )
+        )
+        logger.info(
+            "Financial planning layer: enabled=%s passive_income_goal=%s missing_fields=%s",
+            bool(financial_planning_meta.get("planning_mode")),
+            bool(financial_planning_meta.get("passive_income_goal")),
+            financial_planning_meta.get("missing_fields", []),
+        )
+
         model_routing = self._resolve_model_routing(
             question=question,
             intent=intent,
@@ -1480,6 +2066,7 @@ class AnalyticalChatPipeline:
                     "pending_transaction_draft": pending_transaction_draft,
                     "final_answer_model": final_answer_model,
                     "fallback_used": fallback_used,
+                    "financial_planning": financial_planning_meta,
                     "stage_deployments": stage_deployments,
                     "stage_timings_ms": stage_timings_ms,
                 }
@@ -1535,6 +2122,7 @@ class AnalyticalChatPipeline:
                     "guardrail_hits": guardrail_hits,
                     "final_answer_model": final_answer_model,
                     "fallback_used": fallback_used,
+                    "financial_planning": financial_planning_meta,
                     "stage_deployments": stage_deployments,
                     "stage_timings_ms": stage_timings_ms,
                 }
@@ -1565,7 +2153,9 @@ class AnalyticalChatPipeline:
                 (time.perf_counter() - retrieve_started_at) * 1000, 2
             )
 
-            if not evidence_pack.sources:
+            if not evidence_pack.sources and not bool(
+                financial_planning_meta.get("planning_mode")
+            ):
                 stage_timings_ms["total_ms"] = round(
                     (time.perf_counter() - pipeline_started_at) * 1000, 2
                 )
@@ -1584,6 +2174,7 @@ class AnalyticalChatPipeline:
                             "compressed_evidence_pack": None,
                             "analyst_output": "",
                             "guardrail_hits": [],
+                            "financial_planning": financial_planning_meta,
                             "stage_deployments": stage_deployments,
                             "stage_timings_ms": stage_timings_ms,
                         }
@@ -1609,6 +2200,7 @@ class AnalyticalChatPipeline:
                 evidence_pack=evidence_pack,
                 analyst_artifact=analyst_artifact,
                 user_context=user_context,
+                financial_planning_brief=financial_planning_brief,
                 routing_intent=routing_intent,
                 deployment=stage_deployments["advisor"],
             ).strip()
@@ -1663,6 +2255,7 @@ class AnalyticalChatPipeline:
                     "guardrail_hits": guardrail_hits,
                     "final_answer_model": final_answer_model,
                     "fallback_used": fallback_used,
+                    "financial_planning": financial_planning_meta,
                     "stage_deployments": stage_deployments,
                     "stage_timings_ms": stage_timings_ms,
                 }
@@ -1715,7 +2308,11 @@ class AnalyticalChatPipeline:
             evidence_by_hypothesis
         )
 
-        if routing_intent == ROUTING_INTENT_ANALYTICAL_RAG and not sources:
+        if (
+            routing_intent == ROUTING_INTENT_ANALYTICAL_RAG
+            and not sources
+            and not bool(financial_planning_meta.get("planning_mode"))
+        ):
             stage_timings_ms["total_ms"] = round(
                 (time.perf_counter() - pipeline_started_at) * 1000, 2
             )
@@ -1735,6 +2332,7 @@ class AnalyticalChatPipeline:
                         "compressed_evidence_pack": None,
                         "analyst_output": "",
                         "guardrail_hits": [],
+                        "financial_planning": financial_planning_meta,
                         "stage_deployments": stage_deployments,
                         "stage_timings_ms": stage_timings_ms,
                     }
@@ -1776,6 +2374,7 @@ class AnalyticalChatPipeline:
             user_context=user_context,
             analyst_artifact=analyst_artifact,
             compressed_pack=compressed_pack,
+            financial_planning_brief=financial_planning_brief,
             routing_intent=routing_intent,
             deployment=stage_deployments["advisor"],
         ).strip()
@@ -1844,6 +2443,7 @@ class AnalyticalChatPipeline:
                 "guardrail_hits": guardrail_hits,
                 "final_answer_model": final_answer_model,
                 "fallback_used": fallback_used,
+                "financial_planning": financial_planning_meta,
                 "stage_deployments": stage_deployments,
                 "stage_timings_ms": stage_timings_ms,
             }

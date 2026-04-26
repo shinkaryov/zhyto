@@ -9,3 +9,6 @@ $analyst_artifact
 
 Compressed Evidence Pack:
 $compressed_evidence_pack
+
+Deterministic Financial Planning Brief:
+$financial_planning_brief

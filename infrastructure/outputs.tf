@@ -73,6 +73,16 @@ output "storage_chroma_share" {
   value       = module.storage.chroma_share_name
 }
 
+output "log_analytics_workspace_id" {
+  description = "Log Analytics workspace resource ID"
+  value       = azurerm_log_analytics_workspace.main.id
+}
+
+output "log_analytics_workspace_name" {
+  description = "Log Analytics workspace name"
+  value       = azurerm_log_analytics_workspace.main.name
+}
+
 output "openai_account_id" {
   description = "Azure OpenAI account ID"
   value       = module.openai.account_id

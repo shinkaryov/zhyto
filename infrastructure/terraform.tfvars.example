@@ -24,8 +24,8 @@ app_service_plan_sku  = "B1"
 container_image_name = "ukraine-invest-backend"
 container_image_tag  = "latest"
 
-backend_health_check_path = "/health"
-backend_always_on         = false
+backend_health_check_path = "/health/ready"
+backend_always_on         = true
 chroma_mount_path         = "/mounts/chroma"
 
 # Cosmos DB must be globally unique
@@ -63,6 +63,8 @@ storage_account_name  = "sazhytoukrinvest"
 chroma_share_name     = "chroma-zhyto-ukrinvest"
 chroma_share_quota_gb = 100
 extra_storage_data_principal_object_ids = []
+log_analytics_workspace_name = "log-zhyto-ukrinvest"
+log_analytics_retention_days = 30
 
 # App auth config
 entra_redirect_uri = "http://localhost:3000"

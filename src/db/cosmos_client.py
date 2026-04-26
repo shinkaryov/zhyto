@@ -106,9 +106,17 @@ class CosmosDBClient:
             logger.info("Cosmos DB initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Cosmos DB: {e}")
-            logger.warning("Falling back to mock database")
-            self.use_mock = True
-            self._init_local_db()
+            if settings.allow_mock_fallback():
+                logger.warning("Falling back to mock database")
+                self.use_mock = True
+                self._init_local_db()
+                return
+            logger.critical(
+                "Cosmos DB unavailable in production and mock fallback is disabled."
+            )
+            raise RuntimeError(
+                "Cosmos DB initialization failed and mock fallback is disabled."
+            ) from e
 
     def is_ready(self) -> bool:
         """Check if Cosmos DB is ready for operations."""

@@ -225,6 +225,11 @@ class TestIntentDetector:
             ROUTING_INTENT_ANALYTICAL_WITH_LIVE_PRICE,
         }
 
+    def test_goal_based_buy_question_routes_to_analytical(self):
+        detector = QueryIntentDetector()
+        intent = detector.detect("Що мені купити для пасивного доходу через 10 років?")
+        assert intent.routing_intent == ROUTING_INTENT_ANALYTICAL_RAG
+
 
 class TestDeterministicReranker:
     def test_boosts_recent_trusted_domain_match(self):
@@ -499,6 +504,115 @@ class TestAnalyticalChatPipeline:
         )
         assert advisor_call is not None
         assert advisor_call["kwargs"].get("max_tokens") >= 1400
+
+    def test_passive_income_goal_prompt_contains_required_capital_and_reality_check(self):
+        retriever = DummyRetriever([])
+        generator = DummyGenerator()
+        pipeline = AnalyticalChatPipeline(retriever=retriever, generator=generator)
+        pipeline.model_router = ChatModelRouter(
+            enabled=True,
+            default_deployment="mini-deploy",
+            advanced_deployment="pro-deploy",
+        )
+
+        _ = pipeline.run(
+            question="Хочу $5,000/міс пасивно за 10 років, внесок $1,000/міс, просадка до 20%. Що мені купити?",
+            user_portfolio=[
+                {
+                    "asset_type": "Акції (ETF)",
+                    "ticker": "SPY",
+                    "current_value_usd": 180000,
+                },
+                {
+                    "asset_type": "Акції (ETF)",
+                    "ticker": "QQQ",
+                    "current_value_usd": 20000,
+                },
+            ],
+            portfolio_totals={"usd": 200000, "uah": None, "eur": None},
+        )
+
+        advisor_call = generator.calls[-1]
+        prompt = advisor_call["prompt"]
+        assert "Annual target income: $60,000" in prompt
+        assert "Conservative 3%: $2,000,000" in prompt
+        assert "Moderate 4%: $1,500,000" in prompt
+        assert "Higher risk 5%: $1,200,000" in prompt
+        assert "Aggressive 6%: $1,000,000" in prompt
+        assert "Raw contribution over horizon: $120,000" in prompt
+        assert "Target looks hard to reach" in prompt
+        assert "Recommended allocation ranges" in prompt
+
+    def test_concrete_buy_question_uses_allocation_ranges_not_single_ticker_command(self):
+        pipeline = AnalyticalChatPipeline(retriever=DummyRetriever([]), generator=DummyGenerator())
+        brief, meta = pipeline._build_financial_planning_brief(
+            question="Що конкретно купити для портфеля?",
+            history=[],
+            user_notes=[],
+            user_portfolio=[],
+            portfolio_totals=None,
+            routing_intent=ROUTING_INTENT_ANALYTICAL_RAG,
+            language="uk",
+        )
+
+        assert meta["planning_mode"] is True
+        assert "Recommended allocation ranges" in brief
+        assert "Growth core:" in brief
+        assert "Defensive/income:" in brief
+        assert "Do not issue overconfident single-security buy/sell commands." in brief
+        assert "buy SPY and OVDP" not in brief
+
+    def test_asset_class_guidance_includes_purpose_ranges_and_risks(self):
+        pipeline = AnalyticalChatPipeline(retriever=DummyRetriever([]), generator=DummyGenerator())
+        brief, _ = pipeline._build_financial_planning_brief(
+            question="Які класи активів розглянути?",
+            history=[],
+            user_notes=[],
+            user_portfolio=[],
+            portfolio_totals=None,
+            routing_intent=ROUTING_INTENT_ANALYTICAL_RAG,
+            language="uk",
+        )
+
+        assert "Growth core:" in brief and "purpose=growth" in brief and "risk=" in brief
+        assert (
+            "Defensive/income:" in brief
+            and "purpose=stability + income" in brief
+            and "risk=" in brief
+        )
+        assert "Real assets/REITs:" in brief and "risk=" in brief
+
+    def test_drawdown_20_profile_limits_equity_range(self):
+        pipeline = AnalyticalChatPipeline(retriever=DummyRetriever([]), generator=DummyGenerator())
+        brief, _ = pipeline._build_financial_planning_brief(
+            question="План на 10 років, просадка до 20%, що мені купити?",
+            history=[],
+            user_notes=[],
+            user_portfolio=[],
+            portfolio_totals=None,
+            routing_intent=ROUTING_INTENT_ANALYTICAL_RAG,
+            language="uk",
+        )
+
+        assert "Growth core: 45-55%" in brief
+        assert "Opportunistic/high-risk: 0-5%" in brief
+        assert "Growth core: 90-100%" not in brief
+
+    def test_passive_income_plan_brief_separates_three_phases(self):
+        pipeline = AnalyticalChatPipeline(retriever=DummyRetriever([]), generator=DummyGenerator())
+        brief, _ = pipeline._build_financial_planning_brief(
+            question="Хочу пасивний дохід через 10 років. Внесок $1000/міс.",
+            history=[],
+            user_notes=[],
+            user_portfolio=[],
+            portfolio_totals=None,
+            routing_intent=ROUTING_INTENT_ANALYTICAL_RAG,
+            language="uk",
+        )
+
+        assert "Phase 1 (Accumulation)" in brief
+        assert "Phase 2 (Transition)" in brief
+        assert "Phase 3 (Income)" in brief
 
     def test_returns_only_cited_sources(self):
         raw_results = [

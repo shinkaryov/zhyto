@@ -23,11 +23,8 @@ def _warm_up_services() -> None:
     from src.rag.generator import get_generator
 
     get_cosmos_client()
-    retriever = get_retriever()
+    get_retriever()
     get_generator()
-
-    # Prime embedder + vector query path once, so first chat request is faster.
-    retriever.search("warmup", top_k=1)
 
 
 @asynccontextmanager

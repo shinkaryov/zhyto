@@ -125,6 +125,23 @@ resource "azurerm_role_assignment" "storage_file_data_smb_share_contributor" {
 }
 
 # ============================================================
+# Observability (Log Analytics + App diagnostics)
+# ============================================================
+
+resource "azurerm_log_analytics_workspace" "main" {
+  name                = var.log_analytics_workspace_name
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  sku                 = "PerGB2018"
+  retention_in_days   = var.log_analytics_retention_days
+
+  tags = merge(
+    var.common_tags,
+    { Name = "ukraine-invest-log-analytics" }
+  )
+}
+
+# ============================================================
 # Azure OpenAI / Foundry OpenAI
 # ============================================================
 
@@ -241,6 +258,7 @@ module "web_app" {
     "USE_MOCK_AUTH"                          = "false"
     "FEATURE_AZURE_OPENAI_ENABLED"           = "true"
     "FEATURE_COSMOS_DB_ENABLED"              = "true"
+    "FAIL_OPEN_TO_MOCK_IN_PRODUCTION"        = "false"
     "AZURE_OPENAI_ENDPOINT"                  = module.openai.endpoint
     "AZURE_OPENAI_API_KEY"                   = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.openai_api_key.id})"
     "AZURE_OPENAI_DEPLOYMENT_NAME"           = module.openai.default_deployment_name
@@ -252,6 +270,10 @@ module "web_app" {
     "CHROMA_PERSIST_DIR"                     = var.chroma_mount_path
     "ENTRA_REDIRECT_URI"                     = var.entra_redirect_uri
     "AUTH_TOKEN_SECRET"                      = var.auth_token_secret
+    "WEBSITE_WARMUP_PATH"                    = var.backend_health_check_path
+    "WEBSITE_WARMUP_STATUSES"                = "200"
+    "WEBSITES_CONTAINER_START_TIME_LIMIT"    = "600"
+    "WEBSITE_HEALTHCHECK_MAXPINGFAILURES"    = "10"
   }
 
   tags = merge(
@@ -276,4 +298,19 @@ resource "azurerm_key_vault_access_policy" "webapp_secrets_reader" {
   object_id    = module.web_app.principal_id
 
   secret_permissions = ["Get", "List"]
+}
+
+resource "azurerm_monitor_diagnostic_setting" "web_app" {
+  name                       = "diag-webapp-${var.environment}"
+  target_resource_id         = module.web_app.web_app_id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+
+  enabled_log {
+    category_group = "allLogs"
+  }
+
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+  }
 }

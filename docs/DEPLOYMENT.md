@@ -90,10 +90,41 @@ Default blob name in workflow is `email_whitelist.txt`.
 ## Health Verification
 
 After backend deploy:
-- `https://<backend-web-app>.azurewebsites.net/health` should return `200`.
+- `https://<backend-web-app>.azurewebsites.net/health/ready` should return `200`.
 
 After frontend deploy:
 - Storage static website endpoint should serve `index.html`.
+
+## Stability Notes
+
+- App Service health check is configured to use `/health/ready` (dependency-aware readiness).
+- Backend runs with `always_on=true` to reduce cold-start outages.
+- Production is configured with `FAIL_OPEN_TO_MOCK_IN_PRODUCTION=false` to prevent silent fallback to local mock stores.
+  - If Cosmos/Embeddings are unavailable, app reports not-ready/500 instead of writing to ephemeral mock files.
+
+## Observability
+
+Terraform provisions a Log Analytics workspace and diagnostic settings for backend Web App logs/metrics.
+
+Where to check:
+- Azure Portal -> Log Analytics workspaces -> `log-zhyto-ukrinvest` -> Logs.
+
+Useful KQL starters:
+
+```kusto
+AppServiceConsoleLogs
+| where _ResourceId has "app-zhyto-ukrinvest"
+| where TimeGenerated > ago(2h)
+| order by TimeGenerated desc
+```
+
+```kusto
+AppServiceHTTPLogs
+| where _ResourceId has "app-zhyto-ukrinvest"
+| where ScStatus >= 500 or CsUriStem startswith "/health"
+| where TimeGenerated > ago(24h)
+| order by TimeGenerated desc
+```
 
 ## Notes
 

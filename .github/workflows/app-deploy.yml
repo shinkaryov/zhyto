@@ -103,14 +103,10 @@ jobs:
             --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
             --settings WEBSITES_PORT=8000
 
-          az webapp restart \
-            --name "${{ env.BACKEND_WEB_APP_NAME }}" \
-            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}"
-
       - name: Verify backend health
         run: |
           set -euo pipefail
-          BACKEND_URL="https://${{ env.BACKEND_WEB_APP_NAME }}.azurewebsites.net/health"
+          BACKEND_URL="https://${{ env.BACKEND_WEB_APP_NAME }}.azurewebsites.net/health/ready"
 
           for i in {1..30}; do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL" || echo "000")

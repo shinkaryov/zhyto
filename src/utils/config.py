@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     use_mock_auth: bool = Field(default=True, env="USE_MOCK_AUTH")
     use_mock_cosmos: bool = Field(default=True, env="USE_MOCK_COSMOS")
     use_mock_openai: bool = Field(default=True, env="USE_MOCK_OPENAI")
+    fail_open_to_mock_in_production: bool = Field(
+        default=False, env="FAIL_OPEN_TO_MOCK_IN_PRODUCTION"
+    )
 
     # ============================================================
     # ChromaDB Configuration
@@ -273,6 +276,12 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development environment."""
         return self.app_env.lower() == "development"
+
+    def allow_mock_fallback(self) -> bool:
+        """Whether runtime is allowed to silently fall back to mock services."""
+        if not self.is_production():
+            return True
+        return bool(self.fail_open_to_mock_in_production)
 
 
 def load_settings() -> Settings:

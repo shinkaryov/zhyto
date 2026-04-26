@@ -1,4 +1,6 @@
 from typing import Optional
+
+from src.utils.config import settings
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -27,7 +29,12 @@ class Retriever:
             logger.info("Retriever initialized with real ChromaDB")
         except Exception as e:
             logger.error(f"Failed to initialize Retriever: {e}")
-            self.use_mock = True
+            if settings.allow_mock_fallback():
+                self.use_mock = True
+                return
+            raise RuntimeError(
+                "Retriever initialization failed and mock fallback is disabled."
+            ) from e
 
     def search(self, query: str, top_k: int = 5) -> list[dict]:
         if self.use_mock:
@@ -58,6 +65,10 @@ class Retriever:
 
         except Exception as e:
             logger.error(f"Search failed: {e}")
+            if not settings.allow_mock_fallback():
+                raise RuntimeError(
+                    "Retriever search failed and mock fallback is disabled."
+                ) from e
             return self._mock_search(query, top_k)
 
     @staticmethod

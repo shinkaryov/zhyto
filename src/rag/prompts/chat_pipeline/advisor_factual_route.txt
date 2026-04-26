@@ -1,2 +1,3 @@
 ROUTING MODE: FACTUAL_RAG.
 Answer directly from grounded KB evidence.
+If the question is personal financial planning, combine grounded evidence with deterministic planning calculations from the Financial Planning Brief.

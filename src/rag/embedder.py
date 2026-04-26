@@ -41,7 +41,12 @@ class Embedder:
             logger.info("Azure OpenAI Embeddings initialized")
         except Exception as e:
             logger.error(f"Failed to init Azure Embeddings: {e}")
-            self.use_mock = True
+            if settings.allow_mock_fallback():
+                self.use_mock = True
+                return
+            raise RuntimeError(
+                "Azure Embeddings initialization failed and mock fallback is disabled."
+            ) from e
 
     def embed_text(self, text: str) -> list[float]:
         key = (text or "").strip()
@@ -66,6 +71,10 @@ class Embedder:
             return fallback
         except Exception as e:
             logger.error(f"Embedding failed: {e}")
+            if not settings.allow_mock_fallback():
+                raise RuntimeError(
+                    "Embedding request failed and mock fallback is disabled."
+                ) from e
             fallback = self._mock_embed(text)
             self._set_cached_embedding(key, fallback)
             return fallback
@@ -78,6 +87,10 @@ class Embedder:
             return self.embeddings.embed_documents(texts)
         except Exception as e:
             logger.error(f"Batch embedding failed: {e}")
+            if not settings.allow_mock_fallback():
+                raise RuntimeError(
+                    "Batch embedding failed and mock fallback is disabled."
+                ) from e
             return [self._mock_embed(text) for text in texts]
 
     def _mock_embed(self, text: str) -> list[float]:
