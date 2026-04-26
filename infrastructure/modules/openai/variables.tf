@@ -117,6 +117,12 @@ variable "embedding_deployment_sku_capacity" {
   default     = 1
 }
 
+variable "rai_policy_name" {
+  description = "Responsible AI policy name for Azure OpenAI deployments"
+  type        = string
+  default     = "Microsoft.DefaultV2"
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)

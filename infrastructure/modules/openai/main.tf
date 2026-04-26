@@ -28,6 +28,7 @@ resource "azurerm_cognitive_account" "openai" {
 resource "azurerm_cognitive_deployment" "default" {
   name                 = var.default_deployment_name
   cognitive_account_id = azurerm_cognitive_account.openai.id
+  rai_policy_name      = trimspace(var.rai_policy_name) != "" ? var.rai_policy_name : null
 
   model {
     format  = "OpenAI"
@@ -45,6 +46,7 @@ resource "azurerm_cognitive_deployment" "advanced" {
   count                = var.enable_advanced_deployment ? 1 : 0
   name                 = var.advanced_deployment_name
   cognitive_account_id = azurerm_cognitive_account.openai.id
+  rai_policy_name      = trimspace(var.rai_policy_name) != "" ? var.rai_policy_name : null
 
   model {
     format  = "OpenAI"
@@ -61,6 +63,7 @@ resource "azurerm_cognitive_deployment" "advanced" {
 resource "azurerm_cognitive_deployment" "embedding" {
   name                 = var.embedding_deployment_name
   cognitive_account_id = azurerm_cognitive_account.openai.id
+  rai_policy_name      = trimspace(var.rai_policy_name) != "" ? var.rai_policy_name : null
 
   model {
     format  = "OpenAI"

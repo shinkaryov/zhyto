@@ -57,6 +57,7 @@ openai_embedding_model_name            = "text-embedding-3-small"
 openai_embedding_model_version         = "1"
 openai_embedding_deployment_sku_name   = "GlobalStandard"
 openai_embedding_deployment_sku_capacity = 1
+openai_rai_policy_name                 = "Microsoft.DefaultV2"
 
 # Storage account must be globally unique (no special chars)
 storage_account_name  = "sazhytoukrinvest"

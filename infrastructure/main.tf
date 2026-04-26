@@ -174,6 +174,7 @@ module "openai" {
   embedding_model_version           = var.openai_embedding_model_version
   embedding_deployment_sku_name     = var.openai_embedding_deployment_sku_name
   embedding_deployment_sku_capacity = var.openai_embedding_deployment_sku_capacity
+  rai_policy_name                   = var.openai_rai_policy_name
 
   tags = merge(
     var.common_tags,
@@ -273,7 +274,6 @@ module "web_app" {
     "WEBSITE_WARMUP_PATH"                    = var.backend_health_check_path
     "WEBSITE_WARMUP_STATUSES"                = "200"
     "WEBSITES_CONTAINER_START_TIME_LIMIT"    = "600"
-    "WEBSITE_HEALTHCHECK_MAXPINGFAILURES"    = "10"
   }
 
   tags = merge(

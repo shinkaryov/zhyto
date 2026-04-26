@@ -54,6 +54,9 @@ resource "azurerm_cosmosdb_sql_container" "users" {
 
   indexing_policy {
     indexing_mode = "consistent"
+    included_path {
+      path = "/*"
+    }
   }
 }
 
@@ -66,6 +69,9 @@ resource "azurerm_cosmosdb_sql_container" "user_notes" {
 
   indexing_policy {
     indexing_mode = "consistent"
+    included_path {
+      path = "/*"
+    }
   }
 }
 
@@ -78,6 +84,9 @@ resource "azurerm_cosmosdb_sql_container" "portfolio_assets" {
 
   indexing_policy {
     indexing_mode = "consistent"
+    included_path {
+      path = "/*"
+    }
   }
 }
 
@@ -90,5 +99,8 @@ resource "azurerm_cosmosdb_sql_container" "chat_history" {
 
   indexing_policy {
     indexing_mode = "consistent"
+    included_path {
+      path = "/*"
+    }
   }
 }

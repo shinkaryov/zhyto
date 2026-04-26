@@ -283,6 +283,12 @@ variable "openai_embedding_deployment_sku_capacity" {
   default     = 1
 }
 
+variable "openai_rai_policy_name" {
+  description = "Responsible AI policy name for Azure OpenAI deployments"
+  type        = string
+  default     = "Microsoft.DefaultV2"
+}
+
 # ============================================================
 # Storage Account
 # ============================================================
