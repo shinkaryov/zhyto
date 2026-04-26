@@ -106,6 +106,38 @@ class TestModelRouter:
         assert decision.selected_deployment == "mini-deploy"
         assert decision.complexity_label == "simple"
 
+    def test_factual_rag_broad_query_stays_on_default_deployment(self):
+        router = ChatModelRouter(
+            enabled=True,
+            default_deployment="mini-deploy",
+            advanced_deployment="pro-deploy",
+        )
+        decision = router.route(
+            question=(
+                "Explain tax nuances for a Ukrainian investor across OVDP, ETFs, "
+                "stocks, crypto, real estate, deposits, and bonds, and include "
+                "differences for short-term and long-term holding periods."
+            ),
+            routing_intent=ROUTING_INTENT_FACTUAL_RAG,
+        )
+        assert decision.selected_deployment == "mini-deploy"
+        assert decision.complexity_label == "moderate"
+        assert "latency and stability" in decision.reason.lower()
+
+    def test_factual_rag_high_stakes_stays_on_default_deployment(self):
+        router = ChatModelRouter(
+            enabled=True,
+            default_deployment="mini-deploy",
+            advanced_deployment="pro-deploy",
+        )
+        decision = router.route(
+            question="Should I put all money into OVDP right now?",
+            routing_intent=ROUTING_INTENT_FACTUAL_RAG,
+        )
+        assert decision.selected_deployment == "mini-deploy"
+        assert decision.complexity_label == "complex"
+        assert "latency and stability" in decision.reason.lower()
+
 
 class TestIntentDetector:
     def test_detects_domain_channel_and_analysis_intent(self):
@@ -300,6 +332,11 @@ class TestAnalyticalChatPipeline:
             retriever=retriever,
             generator=generator,
         )
+        pipeline.model_router = ChatModelRouter(
+            enabled=True,
+            default_deployment="mini-deploy",
+            advanced_deployment="pro-deploy",
+        )
 
         result = pipeline.run(question="вчора взяв 4 акції MSFT за 1600 баксів")
 
@@ -313,6 +350,7 @@ class TestAnalyticalChatPipeline:
         assert generator.calls[0]["kwargs"].get("tool_categories") == [
             "portfolio_action_tools"
         ]
+        assert generator.calls[0]["kwargs"].get("deployment") == "mini-deploy"
 
     def test_transaction_clarification_followup_routes_back_to_draft_flow(self):
         retriever = DummyRetriever([])
@@ -405,6 +443,62 @@ class TestAnalyticalChatPipeline:
             "live_market_tools"
         ]
         assert generator.calls[0]["kwargs"].get("deployment") == "mini-deploy"
+        assert (
+            generator.calls[0]["kwargs"].get("max_tokens") == pipeline.TOKENS_LIVE_PRICE
+        )
+        assert generator.calls[0]["kwargs"].get("max_tokens") <= 300
+
+    def test_analytical_rag_stage_split_uses_advanced_only_for_advisor(self):
+        retriever = DummyRetriever(
+            [
+                {
+                    "content": "OVDP demand remains stable according to primary market updates.",
+                    "metadata": {
+                        "source_id": "s1",
+                        "channel": "NewsA",
+                        "url": "https://source-a",
+                        "date": "2026-04-22",
+                        "domain": "fixed_income",
+                        "trust_weight": 0.9,
+                    },
+                    "distance": 0.1,
+                }
+            ]
+        )
+        generator = DummyGenerator()
+        pipeline = AnalyticalChatPipeline(
+            retriever=retriever,
+            generator=generator,
+        )
+        pipeline.model_router = ChatModelRouter(
+            enabled=True,
+            default_deployment="mini-deploy",
+            advanced_deployment="pro-deploy",
+        )
+
+        result = pipeline.run(
+            question="Проаналізуй ризики мого портфеля на 2 роки",
+            debug=True,
+        )
+
+        assert result.debug is not None
+        assert result.debug["stage_deployments"] == {
+            "hypothesis": "mini-deploy",
+            "compression": "mini-deploy",
+            "analyst": "mini-deploy",
+            "advisor": "pro-deploy",
+        }
+        advisor_call = next(
+            (
+                item
+                for item in generator.calls
+                if item["kwargs"].get("deployment") == "pro-deploy"
+                and item["kwargs"].get("chat_intent") == ROUTING_INTENT_ANALYTICAL_RAG
+            ),
+            None,
+        )
+        assert advisor_call is not None
+        assert advisor_call["kwargs"].get("max_tokens") >= 1400
 
     def test_returns_only_cited_sources(self):
         raw_results = [

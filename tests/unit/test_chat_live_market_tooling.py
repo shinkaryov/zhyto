@@ -91,6 +91,7 @@ def test_live_price_query_runs_advisor_even_without_kb_sources():
     assert generator.calls[0]["kwargs"].get("enable_market_price_tool") is False
     assert generator.calls[0]["kwargs"].get("tool_categories") == ["live_market_tools"]
     assert generator.calls[0]["kwargs"].get("deployment") == "mini-deploy"
+    assert generator.calls[0]["kwargs"].get("max_tokens") <= 300
 
 
 def test_live_price_plus_analysis_uses_tool_and_relevant_rag_context():
@@ -112,6 +113,7 @@ def test_live_price_plus_analysis_uses_tool_and_relevant_rag_context():
     assert generator.calls[-1]["kwargs"].get("enable_market_price_tool") is False
     assert generator.calls[-1]["kwargs"].get("tool_categories") == ["live_market_tools"]
     assert generator.calls[-1]["kwargs"].get("deployment") == "pro-deploy"
+    assert generator.calls[-1]["kwargs"].get("max_tokens") >= 1400
     hypothesis_call = next(
         (
             item

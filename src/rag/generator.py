@@ -34,6 +34,10 @@ _pending_transaction_draft_ctx: ContextVar[Optional[dict[str, Any]]] = ContextVa
     "pending_transaction_draft",
     default=None,
 )
+_llm_call_metadata_ctx: ContextVar[Optional[dict[str, Any]]] = ContextVar(
+    "llm_call_metadata",
+    default=None,
+)
 
 try:
     from openai import (
@@ -306,9 +310,18 @@ class Generator:
             {
               "message": str,
               "pending_transaction_draft": Optional[dict]
+              "model_call_metadata": Optional[dict]
             }
         """
-        token = _pending_transaction_draft_ctx.set(None)
+        resolved_requested_deployment = (deployment or self.default_deployment).strip()
+        draft_token = _pending_transaction_draft_ctx.set(None)
+        metadata_token = _llm_call_metadata_ctx.set(
+            {
+                "requested_deployment": resolved_requested_deployment or None,
+                "final_deployment": None,
+                "fallback_used": False,
+            }
+        )
         try:
             message = self._generate_impl(
                 prompt=prompt,
@@ -322,12 +335,34 @@ class Generator:
                 chat_intent=chat_intent,
             )
             pending_draft = _pending_transaction_draft_ctx.get()
+            call_metadata_raw = _llm_call_metadata_ctx.get()
+            call_metadata: Optional[dict[str, Any]] = None
+            if isinstance(call_metadata_raw, dict):
+                requested_deployment = (
+                    str(call_metadata_raw.get("requested_deployment") or "").strip()
+                    or None
+                )
+                final_deployment = (
+                    str(call_metadata_raw.get("final_deployment") or "").strip() or None
+                )
+                fallback_used = bool(call_metadata_raw.get("fallback_used"))
+                if requested_deployment and final_deployment:
+                    fallback_used = fallback_used or (
+                        requested_deployment != final_deployment
+                    )
+                call_metadata = {
+                    "requested_deployment": requested_deployment,
+                    "final_deployment": final_deployment,
+                    "fallback_used": fallback_used,
+                }
             return {
                 "message": message,
                 "pending_transaction_draft": pending_draft,
+                "model_call_metadata": call_metadata,
             }
         finally:
-            _pending_transaction_draft_ctx.reset(token)
+            _pending_transaction_draft_ctx.reset(draft_token)
+            _llm_call_metadata_ctx.reset(metadata_token)
 
     def _generate_impl(
         self,
@@ -890,6 +925,16 @@ class Generator:
             self._extract_responses_output_types(response),
             latency_ms,
         )
+        call_metadata = _llm_call_metadata_ctx.get()
+        if isinstance(call_metadata, dict):
+            requested_deployment = (
+                str(call_metadata.get("requested_deployment") or "").strip()
+                or deployment
+            )
+            call_metadata["requested_deployment"] = requested_deployment
+            call_metadata["final_deployment"] = deployment
+            if deployment != requested_deployment:
+                call_metadata["fallback_used"] = True
         return response
 
     def _should_fallback_to_default_on_runtime_error(

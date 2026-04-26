@@ -265,6 +265,50 @@ def test_reasoning_only_pro_falls_back_to_mini_after_targeted_retries(monkeypatc
     assert client.responses.calls[3]["model"] == "gpt-5.4-mini"
 
 
+def test_generate_structured_reports_final_model_without_fallback(monkeypatch):
+    monkeypatch.setattr(settings, "chat_llm_retry_enabled", False)
+    generator, _ = _make_generator_with_stub([_message_response("mini-ok")])
+
+    result = generator.generate_structured(
+        prompt="Що таке ETF?",
+        system_prompt="system",
+        history=[],
+        deployment="gpt-5.4-mini",
+    )
+
+    metadata = result.get("model_call_metadata")
+    assert isinstance(metadata, dict)
+    assert metadata["requested_deployment"] == "gpt-5.4-mini"
+    assert metadata["final_deployment"] == "gpt-5.4-mini"
+    assert metadata["fallback_used"] is False
+
+
+def test_generate_structured_reports_fallback_to_mini_metadata(monkeypatch):
+    monkeypatch.setattr(settings, "chat_llm_retry_enabled", False)
+    generator, _ = _make_generator_with_stub(
+        [
+            _reasoning_only_response(),
+            _reasoning_only_response(),
+            _reasoning_only_response(),
+            _message_response("fallback-mini-answer"),
+        ]
+    )
+
+    result = generator.generate_structured(
+        prompt="Проаналізуй мій портфель",
+        system_prompt="system",
+        history=[],
+        deployment="gpt-5.4-pro",
+        chat_intent="analytical_rag",
+    )
+
+    metadata = result.get("model_call_metadata")
+    assert isinstance(metadata, dict)
+    assert metadata["requested_deployment"] == "gpt-5.4-pro"
+    assert metadata["final_deployment"] == "gpt-5.4-mini"
+    assert metadata["fallback_used"] is True
+
+
 def test_mini_empty_output_does_not_fallback_further(monkeypatch):
     monkeypatch.setattr(settings, "chat_llm_retry_enabled", False)
 

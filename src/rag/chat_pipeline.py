@@ -97,8 +97,8 @@ class AnalyticalChatPipeline:
     TOKENS_ANALYST_FACTUAL = 350
     TOKENS_ANALYST_COMPRESSED = 350
     TOKENS_ADVISOR_FACTUAL = 700
-    TOKENS_ADVISOR_COMPRESSED = 700
-    TOKENS_LIVE_PRICE = 320
+    TOKENS_ADVISOR_COMPRESSED = 1400
+    TOKENS_LIVE_PRICE = 280
     TOKENS_PORTFOLIO_DRAFT = 420
 
     def __init__(self, retriever: Any, generator: Any):
@@ -108,6 +108,7 @@ class AnalyticalChatPipeline:
         self.model_router = ChatModelRouter()
         self.reranker = DeterministicReranker()
         self.synthesizer = EvidenceSynthesizer()
+        self._last_model_call_metadata: Optional[dict[str, Any]] = None
 
     @staticmethod
     def _build_hypothesis_cache_key(
@@ -553,15 +554,46 @@ class AnalyticalChatPipeline:
     def _generate_with_optional_metadata(
         self, **kwargs: Any
     ) -> tuple[str, Optional[dict[str, Any]]]:
+        self._last_model_call_metadata = None
         generate_structured = getattr(self.generator, "generate_structured", None)
         if callable(generate_structured):
             result = generate_structured(**kwargs)
             if isinstance(result, dict):
                 message = str(result.get("message") or "").strip()
                 pending = result.get("pending_transaction_draft")
+                model_call_metadata = result.get("model_call_metadata")
+                if isinstance(model_call_metadata, dict):
+                    self._last_model_call_metadata = {
+                        "requested_deployment": str(
+                            model_call_metadata.get("requested_deployment") or ""
+                        ).strip()
+                        or None,
+                        "final_deployment": str(
+                            model_call_metadata.get("final_deployment") or ""
+                        ).strip()
+                        or None,
+                        "fallback_used": bool(model_call_metadata.get("fallback_used")),
+                    }
                 return message, pending if isinstance(pending, dict) else None
         message = self.generator.generate(**kwargs)
         return str(message or "").strip(), None
+
+    def _final_answer_model_info(self, *, selected_deployment: str) -> tuple[str, bool]:
+        final_answer_model = (selected_deployment or "").strip()
+        fallback_used = False
+        metadata = self._last_model_call_metadata
+        if isinstance(metadata, dict):
+            candidate = str(metadata.get("final_deployment") or "").strip()
+            if candidate:
+                final_answer_model = candidate
+            fallback_used = bool(metadata.get("fallback_used"))
+        if (
+            final_answer_model
+            and selected_deployment
+            and final_answer_model != selected_deployment
+        ):
+            fallback_used = True
+        return final_answer_model or selected_deployment, fallback_used
 
     def _generate_hypotheses(
         self,
@@ -1211,7 +1243,7 @@ class AnalyticalChatPipeline:
             evidence_pack=evidence_pack.to_prompt_text(),
         )
 
-        return self.generator.generate(
+        message, _ = self._generate_with_optional_metadata(
             prompt=prompt,
             system_prompt=system_prompt,
             history=history,
@@ -1221,6 +1253,7 @@ class AnalyticalChatPipeline:
             deployment=deployment,
             chat_intent=routing_intent,
         )
+        return message
 
     def _advisor_step_from_compressed(
         self,
@@ -1254,7 +1287,7 @@ class AnalyticalChatPipeline:
             ),
         )
 
-        return self.generator.generate(
+        message, _ = self._generate_with_optional_metadata(
             prompt=prompt,
             system_prompt=system_prompt,
             history=history,
@@ -1269,6 +1302,7 @@ class AnalyticalChatPipeline:
             deployment=deployment,
             chat_intent=routing_intent,
         )
+        return message
 
     def _live_price_only_step(
         self,
@@ -1284,7 +1318,7 @@ class AnalyticalChatPipeline:
             user_context=user_context,
         )
 
-        return self.generator.generate(
+        message, _ = self._generate_with_optional_metadata(
             prompt=prompt,
             system_prompt=system_prompt,
             history=history,
@@ -1297,6 +1331,7 @@ class AnalyticalChatPipeline:
             deployment=deployment,
             chat_intent=ROUTING_INTENT_PURE_LIVE_PRICE,
         )
+        return message
 
     def _draft_portfolio_transaction_step(
         self,
@@ -1425,6 +1460,9 @@ class AnalyticalChatPipeline:
                 routing_intent=ROUTING_INTENT_PORTFOLIO_TRANSACTION,
                 language=language,
             )
+            final_answer_model, fallback_used = self._final_answer_model_info(
+                selected_deployment=selected_deployment
+            )
             stage_timings_ms["total_ms"] = round(
                 (time.perf_counter() - pipeline_started_at) * 1000, 2
             )
@@ -1440,13 +1478,18 @@ class AnalyticalChatPipeline:
                     "analyst_output": "",
                     "guardrail_hits": guardrail_hits,
                     "pending_transaction_draft": pending_transaction_draft,
+                    "final_answer_model": final_answer_model,
+                    "fallback_used": fallback_used,
                     "stage_deployments": stage_deployments,
                     "stage_timings_ms": stage_timings_ms,
                 }
             logger.info(
-                "Analytical chat pipeline route=%s model=%s draft_ms=%.2f total_ms=%.2f guardrail_hits=%d",
+                "Analytical chat pipeline route=%s selected_model=%s final_answer_model=%s fallback_used=%s "
+                "draft_ms=%.2f total_ms=%.2f guardrail_hits=%d",
                 ROUTING_INTENT_PORTFOLIO_TRANSACTION,
                 selected_deployment,
+                final_answer_model,
+                fallback_used,
                 stage_timings_ms.get("draft_ms", 0.0),
                 stage_timings_ms.get("total_ms", 0.0),
                 len(guardrail_hits),
@@ -1474,6 +1517,9 @@ class AnalyticalChatPipeline:
                 routing_intent=routing_intent,
                 language=language,
             )
+            final_answer_model, fallback_used = self._final_answer_model_info(
+                selected_deployment=selected_deployment
+            )
             stage_timings_ms["total_ms"] = round(
                 (time.perf_counter() - pipeline_started_at) * 1000, 2
             )
@@ -1487,13 +1533,18 @@ class AnalyticalChatPipeline:
                     "compressed_evidence_pack": None,
                     "analyst_output": "",
                     "guardrail_hits": guardrail_hits,
+                    "final_answer_model": final_answer_model,
+                    "fallback_used": fallback_used,
                     "stage_deployments": stage_deployments,
                     "stage_timings_ms": stage_timings_ms,
                 }
             logger.info(
-                "Analytical chat pipeline route=%s model=%s live_ms=%.2f total_ms=%.2f cited_sources=%d guardrail_hits=%d",
+                "Analytical chat pipeline route=%s selected_model=%s final_answer_model=%s fallback_used=%s "
+                "live_ms=%.2f total_ms=%.2f cited_sources=%d guardrail_hits=%d",
                 routing_intent,
                 selected_deployment,
+                final_answer_model,
+                fallback_used,
                 stage_timings_ms.get("live_price_ms", 0.0),
                 stage_timings_ms.get("total_ms", 0.0),
                 0,
@@ -1571,6 +1622,9 @@ class AnalyticalChatPipeline:
                     language=language,
                 )
             )
+            final_answer_model, fallback_used = self._final_answer_model_info(
+                selected_deployment=selected_deployment
+            )
             stage_timings_ms["total_ms"] = round(
                 (time.perf_counter() - pipeline_started_at) * 1000, 2
             )
@@ -1607,14 +1661,19 @@ class AnalyticalChatPipeline:
                     "compressed_evidence_pack": None,
                     "analyst_output": analyst_artifact,
                     "guardrail_hits": guardrail_hits,
+                    "final_answer_model": final_answer_model,
+                    "fallback_used": fallback_used,
                     "stage_deployments": stage_deployments,
                     "stage_timings_ms": stage_timings_ms,
                 }
             logger.info(
-                "Analytical chat pipeline route=%s model=%s stage1=%d reranked=%d clusters=%d cited_sources=%d "
+                "Analytical chat pipeline route=%s selected_model=%s final_answer_model=%s fallback_used=%s "
+                "stage1=%d reranked=%d clusters=%d cited_sources=%d "
                 "retrieve_ms=%.2f analyst_ms=%.2f advisor_ms=%.2f total_ms=%.2f guardrail_hits=%d",
                 routing_intent,
                 selected_deployment,
+                final_answer_model,
+                fallback_used,
                 len(stage1_raw),
                 len(narrowed),
                 len(evidence_pack.clusters),
@@ -1728,6 +1787,9 @@ class AnalyticalChatPipeline:
             routing_intent=routing_intent,
             language=language,
         )
+        final_answer_model, fallback_used = self._final_answer_model_info(
+            selected_deployment=selected_deployment
+        )
         stage_timings_ms["total_ms"] = round(
             (time.perf_counter() - pipeline_started_at) * 1000, 2
         )
@@ -1780,16 +1842,21 @@ class AnalyticalChatPipeline:
                 "compressed_evidence_pack": compressed_pack,
                 "analyst_output": analyst_artifact,
                 "guardrail_hits": guardrail_hits,
+                "final_answer_model": final_answer_model,
+                "fallback_used": fallback_used,
                 "stage_deployments": stage_deployments,
                 "stage_timings_ms": stage_timings_ms,
             }
 
         logger.info(
-            "Analytical chat pipeline route=%s model=%s hypotheses=%d sources=%d cited_sources=%d "
+            "Analytical chat pipeline route=%s selected_model=%s final_answer_model=%s fallback_used=%s "
+            "hypotheses=%d sources=%d cited_sources=%d "
             "hypotheses_ms=%.2f retrieve_ms=%.2f compression_ms=%.2f analyst_ms=%.2f advisor_ms=%.2f total_ms=%.2f "
             "guardrail_hits=%d",
             routing_intent,
             selected_deployment,
+            final_answer_model,
+            fallback_used,
             len(hypotheses),
             len(sources),
             len(used_sources),

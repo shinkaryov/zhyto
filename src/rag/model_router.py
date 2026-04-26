@@ -91,6 +91,20 @@ class ChatModelRouter:
     def _normalize(text: str) -> str:
         return " ".join((text or "").strip().lower().split())
 
+    @staticmethod
+    def _infer_complexity_label(
+        *,
+        high_stakes: bool,
+        has_complex_language: bool,
+        broad_query: bool,
+        portfolio_decision_support: bool,
+    ) -> str:
+        if high_stakes:
+            return "complex"
+        if has_complex_language or broad_query or portfolio_decision_support:
+            return "moderate"
+        return "simple"
+
     def route(
         self,
         *,
@@ -149,6 +163,22 @@ class ChatModelRouter:
             or "що робити" in normalized
             or "what should" in normalized
         )
+
+        if routing_intent == ROUTING_INTENT_FACTUAL_RAG:
+            complexity_label = self._infer_complexity_label(
+                high_stakes=high_stakes,
+                has_complex_language=has_complex_language,
+                broad_query=broad_query,
+                portfolio_decision_support=portfolio_decision_support,
+            )
+            return ModelRoutingDecision(
+                selected_deployment=self.default_deployment,
+                reason=(
+                    "Factual RAG is pinned to the default lightweight deployment "
+                    "for latency and stability."
+                ),
+                complexity_label=complexity_label,
+            )
 
         if high_stakes:
             return ModelRoutingDecision(

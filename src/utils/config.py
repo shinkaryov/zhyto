@@ -172,7 +172,7 @@ class Settings(BaseSettings):
         default=None, env="AZURE_OPENAI_DEFAULT_DEPLOYMENT"
     )
     azure_openai_advanced_deployment: str = Field(
-        default="gpt-5.4-pro", env="AZURE_OPENAI_ADVANCED_DEPLOYMENT"
+        default="gpt-5-4-advanced", env="AZURE_OPENAI_ADVANCED_DEPLOYMENT"
     )
     azure_openai_advanced_api_preference: str = Field(
         default="responses", env="AZURE_OPENAI_ADVANCED_API_PREFERENCE"
