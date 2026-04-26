@@ -21,7 +21,7 @@ output "primary_key" {
 
 output "connection_string" {
   description = "Connection string for Cosmos DB"
-  value       = "DefaultEndpointsProtocol=https;AccountName=${azurerm_cosmosdb_account.main.name};AccountKey=${azurerm_cosmosdb_account.main.primary_key};EndpointSuffix=documents.azure.com"
+  value       = azurerm_cosmosdb_account.main.primary_sql_connection_string
   sensitive   = true
 }
 
