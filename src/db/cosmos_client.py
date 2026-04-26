@@ -5,7 +5,7 @@ Azure Cosmos DB client wrapper for user data operations with Local Mock support.
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -43,6 +43,36 @@ class CosmosDBClient:
             logger.info("Using Local JSON Mock for Cosmos DB")
         else:
             self._initialize()
+
+    @staticmethod
+    def _utc_now() -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    @staticmethod
+    def _ensure_id(data: dict) -> dict:
+        item = dict(data or {})
+        if not item.get("id"):
+            item["id"] = str(uuid.uuid4())
+        return item
+
+    @classmethod
+    def _prepare_user_document(cls, data: dict) -> dict:
+        item = cls._ensure_id(data)
+        if not item.get("created_at"):
+            item["created_at"] = cls._utc_now()
+        return item
+
+    @classmethod
+    def _prepare_user_owned_document(cls, data: dict, *, entity_name: str) -> dict:
+        item = cls._ensure_id(data)
+
+        if not item.get("user_id"):
+            raise ValueError(f"user_id is required for {entity_name}")
+
+        if not item.get("created_at"):
+            item["created_at"] = cls._utc_now()
+
+        return item
 
     def _init_local_db(self) -> None:
         """Initialize the local JSON file for mocking the database."""
@@ -125,10 +155,10 @@ class CosmosDBClient:
         return self.database is not None
 
     def create_user(self, user_data: dict) -> dict:
+        user_data = self._prepare_user_document(user_data)
+
         if self.use_mock:
             db = self._read_local_db()
-            if "id" not in user_data:
-                user_data["id"] = str(uuid.uuid4())
             db["users"].append(user_data)
             self._write_local_db(db)
             return user_data
@@ -155,10 +185,10 @@ class CosmosDBClient:
 
     def upsert_user(self, user_data: dict) -> dict:
         """Create or update a user profile record."""
+        user_data = self._prepare_user_document(user_data)
+
         if self.use_mock:
             db = self._read_local_db()
-            if "id" not in user_data:
-                user_data["id"] = str(uuid.uuid4())
 
             replaced = False
             users = db.get("users", [])
@@ -181,10 +211,13 @@ class CosmosDBClient:
             raise
 
     def add_note(self, note_data: dict) -> dict:
+        note_data = self._prepare_user_owned_document(
+            note_data,
+            entity_name="note",
+        )
+
         if self.use_mock:
             db = self._read_local_db()
-            note_data["id"] = str(uuid.uuid4())
-            note_data["created_at"] = datetime.utcnow().isoformat()
             db["notes"].append(note_data)
             self._write_local_db(db)
             return note_data
@@ -211,6 +244,7 @@ class CosmosDBClient:
                     query=query,
                     parameters=[{"name": "@user_id", "value": user_id}],
                     max_item_count=limit,
+                    enable_cross_partition_query=True,
                 )
             )
         except Exception as e:
@@ -218,10 +252,13 @@ class CosmosDBClient:
             return []
 
     def add_portfolio_asset(self, asset_data: dict) -> dict:
+        asset_data = self._prepare_user_owned_document(
+            asset_data,
+            entity_name="portfolio asset",
+        )
+
         if self.use_mock:
             db = self._read_local_db()
-            asset_data["id"] = str(uuid.uuid4())
-            asset_data["created_at"] = datetime.utcnow().isoformat()
             db["portfolio"].append(asset_data)
             self._write_local_db(db)
             return asset_data
@@ -245,6 +282,7 @@ class CosmosDBClient:
                 self.portfolio_container.query_items(
                     query=query,
                     parameters=[{"name": "@user_id", "value": user_id}],
+                    enable_cross_partition_query=True,
                 )
             )
         except Exception as e:
@@ -316,7 +354,7 @@ class CosmosDBClient:
                         asset.pop("manual_current_price", None)
                     else:
                         asset["manual_current_price"] = manual_current_price
-                    asset["updated_at"] = datetime.utcnow().isoformat()
+                    asset["updated_at"] = self._utc_now()
                     self._write_local_db(db)
                     return asset
             logger.warning(
@@ -348,7 +386,7 @@ class CosmosDBClient:
                 asset.pop("manual_current_price", None)
             else:
                 asset["manual_current_price"] = manual_current_price
-            asset["updated_at"] = datetime.utcnow().isoformat()
+            asset["updated_at"] = self._utc_now()
 
             return self.portfolio_container.replace_item(item=asset_id, body=asset)
         except Exception as e:
