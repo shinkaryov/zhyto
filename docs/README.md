@@ -14,8 +14,8 @@
 
 ## Documentation Map
 
-- Architecture: [ARCHITECTURE.md](/Users/admin/PycharmProjects/PythonProject18 копія/docs/ARCHITECTURE.md)
-- Cloud deploy: [DEPLOYMENT.md](/Users/admin/PycharmProjects/PythonProject18 копія/docs/DEPLOYMENT.md)
-- Local development: [LOCAL_DEVELOPMENT.md](/Users/admin/PycharmProjects/PythonProject18 копія/docs/LOCAL_DEVELOPMENT.md)
-- Data artifact handling: [DATA_ARTIFACTS.md](/Users/admin/PycharmProjects/PythonProject18 копія/docs/DATA_ARTIFACTS.md)
-- General development notes: [DEVELOPMENT.md](/Users/admin/PycharmProjects/PythonProject18 копія/docs/DEVELOPMENT.md)
+- Architecture: [ARCHITECTURE.md](https://github.com/shinkaryov/zhyto/blob/master/docs/ARCHITECTURE.md)
+- Cloud deploy: [DEPLOYMENT.md](https://github.com/shinkaryov/zhyto/blob/master/docs/DEPLOYMENT.md)
+- Local development: [LOCAL_DEVELOPMENT.md](https://github.com/shinkaryov/zhyto/blob/master/docs/LOCAL_DEVELOPMENT.md)
+- Data artifact handling: [DATA_ARTIFACTS.md](https://github.com/shinkaryov/zhyto/blob/master/docs/DATA_ARTIFACTS.md)
+- General development notes: [DEVELOPMENT.md](https://github.com/shinkaryov/zhyto/blob/master/docs/DEVELOPMENT.md)
