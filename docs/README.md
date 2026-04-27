@@ -19,3 +19,7 @@
 - Local development: [LOCAL_DEVELOPMENT.md](https://github.com/shinkaryov/zhyto/blob/master/docs/LOCAL_DEVELOPMENT.md)
 - Data artifact handling: [DATA_ARTIFACTS.md](https://github.com/shinkaryov/zhyto/blob/master/docs/DATA_ARTIFACTS.md)
 - General development notes: [DEVELOPMENT.md](https://github.com/shinkaryov/zhyto/blob/master/docs/DEVELOPMENT.md)
+
+## Chat behaviour
+
+<img width="1440" height="3640" alt="image" src="https://github.com/user-attachments/assets/70a458e9-ae05-4851-aeee-e9d45e7a8c40" />
