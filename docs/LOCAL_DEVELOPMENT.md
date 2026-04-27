@@ -23,7 +23,7 @@ Services:
 
 ## Environment
 
-Use `.env` derived from [`.env.example`](/Users/admin/PycharmProjects/PythonProject18 копія/.env.example).
+Use `.env` derived from [`.env.example`](https://github.com/shinkaryov/zhyto/blob/master/.env.example).
 
 Typical local-safe flags:
 - `USE_MOCK_AUTH=true`
@@ -32,7 +32,7 @@ Typical local-safe flags:
 
 Auth whitelist:
 - Keep local file at `src/auth/email_whitelist.txt` (git-ignored).
-- Use [`src/auth/email_whitelist.example.txt`](/Users/admin/PycharmProjects/PythonProject18 копія/src/auth/email_whitelist.example.txt) as a template.
+- Use [`src/auth/email_whitelist.example.txt`](https://github.com/shinkaryov/zhyto/blob/master/src/auth/email_whitelist.example.txt) as a template.
 
 ## Chroma Notes
 
@@ -42,7 +42,7 @@ Local mode can reuse the same local `chroma_data` directory. Re-embedding is opt
 
 ## Optional Manual Ingestion (Local Only)
 
-[`src/rag/data_ingestion.py`](/Users/admin/PycharmProjects/PythonProject18 копія/src/rag/data_ingestion.py) remains an offline tool. Do not run it as part of app startup/deploy scripts.
+[`src/rag/data_ingestion.py`](https://github.com/shinkaryov/zhyto/blob/master/src/rag/data_ingestion.py) remains an offline tool. Do not run it as part of app startup/deploy scripts.
 When you need it, install ingestion-only deps:
 
 ```bash
