@@ -34,8 +34,6 @@ Recommended snapshot naming:
 - `chroma-<env>-<yyyymmdd>-v<revision>.tar.gz`
 
 ### 3) Local Cosmos Mock
-Location:
-- [`local_cosmos_db.json/mock_cosmos_db.json`](/Users/admin/PycharmProjects/PythonProject18 копія/local_cosmos_db.json/mock_cosmos_db.json)
 
 Usage:
 - Local dev/testing only.
@@ -58,7 +56,7 @@ Usage:
 
 ### 5) Offline Ingestion Tool
 Location:
-- [`src/rag/data_ingestion.py`](/Users/admin/PycharmProjects/PythonProject18 копія/src/rag/data_ingestion.py)
+- [`src/rag/data_ingestion.py`](https://github.com/shinkaryov/zhyto/blob/master/src/rag/data_ingestion.py)
 
 Usage:
 - Manual offline ingestion only.
