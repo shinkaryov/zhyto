@@ -5,10 +5,10 @@
 Cloud deploy is manual-only via GitHub Actions `workflow_dispatch`.
 
 Workflows:
-- [`infra-deploy.yml`](/Users/admin/PycharmProjects/PythonProject18 копія/.github/workflows/infra-deploy.yml)
-- [`app-deploy.yml`](/Users/admin/PycharmProjects/PythonProject18 копія/.github/workflows/app-deploy.yml)
-- [`data-restore.yml`](/Users/admin/PycharmProjects/PythonProject18 копія/.github/workflows/data-restore.yml)
-- optional bootstrap state: [`terraform-bootstrap-state.yml`](/Users/admin/PycharmProjects/PythonProject18 копія/.github/workflows/terraform-bootstrap-state.yml)
+- [`infra-deploy.yml`](https://github.com/shinkaryov/zhyto/blob/master/.github/workflows/infra-deploy.yml)
+- [`app-deploy.yml`](https://github.com/shinkaryov/zhyto/blob/master/.github/workflows/app-deploy.yml)
+- [`data-restore.yml`](https://github.com/shinkaryov/zhyto/blob/master/.github/workflows/data-restore.yml)
+- bootstrap state: [`terraform-bootstrap-state.yml`](https://github.com/shinkaryov/zhyto/blob/master/.github/workflows/terraform-bootstrap-state.yml)
 
 ## Order of Operations
 
