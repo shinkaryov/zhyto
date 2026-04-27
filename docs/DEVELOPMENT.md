@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide is focused on local development. For cloud deployment, see [DEPLOYMENT.md](/Users/admin/PycharmProjects/PythonProject18 копія/docs/DEPLOYMENT.md).
+This guide is focused on local development. For cloud deployment, see [DEPLOYMENT.md](https://github.com/shinkaryov/zhyto/blob/master/docs/DEPLOYMENT.md).
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ This guide is focused on local development. For cloud deployment, see [DEPLOYMEN
 docker compose up --build
 ```
 
-See the detailed local runtime notes in [LOCAL_DEVELOPMENT.md](/Users/admin/PycharmProjects/PythonProject18 копія/docs/LOCAL_DEVELOPMENT.md).
+See the detailed local runtime notes in [LOCAL_DEVELOPMENT.md](https://github.com/shinkaryov/zhyto/blob/master/docs/LOCAL_DEVELOPMENT.md).
 
 ## Local Process Mode (optional)
 
