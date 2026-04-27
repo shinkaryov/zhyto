@@ -17,11 +17,11 @@ React (Vite dev/prod container) -> FastAPI backend -> local Chroma path (Persist
                                          +-> local JSON Cosmos mock OR Azure Cosmos (if configured)
 ```
 
-Local services come from [`docker-compose.yml`](/Users/admin/PycharmProjects/PythonProject18 копія/docker-compose.yml):
+Local services come from [`docker-compose.yml`](https://github.com/shinkaryov/zhyto/blob/master/docker-compose.yml):
 - `frontend`
 - `backend`
 
-Backend retrieval logic uses local persistent Chroma path by default via [`src/db/chroma_client.py`](/Users/admin/PycharmProjects/PythonProject18 копія/src/db/chroma_client.py).
+Backend retrieval logic uses local persistent Chroma path by default via [`src/db/chroma_client.py`](https://github.com/shinkaryov/zhyto/blob/master/src/db/chroma_client.py).
 
 ## Cloud Architecture (Low-Cost / Poland Central)
 
@@ -41,7 +41,7 @@ Artifact storage:
 - backups/
 ```
 
-Infrastructure is managed by Terraform in [`infrastructure/`](/Users/admin/PycharmProjects/PythonProject18 копія/infrastructure).
+Infrastructure is managed by Terraform in [`infrastructure/`](https://github.com/shinkaryov/zhyto/blob/master/infrastructure).
 
 ## Cloud Components
 
@@ -88,6 +88,5 @@ Rationale: lowest operational/cost overhead for current load.
 ## What Is Intentionally Not Included
 
 - No auto-deploy on push.
-- No mandatory Redis layer.
 - No separate production Chroma server required.
 - No embedding/data ingestion in runtime deploy path.
