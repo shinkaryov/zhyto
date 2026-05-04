@@ -22,4 +22,5 @@
 
 ## Chat behaviour
 
-<img width="1440" height="3640" alt="image" src="https://github.com/user-attachments/assets/70a458e9-ae05-4851-aeee-e9d45e7a8c40" />
+<img width="941" height="1672" alt="image" src="https://github.com/user-attachments/assets/94c34c24-5a6e-49fd-8fe6-1c5ceab12326" />
+
